@@ -6,6 +6,7 @@ from skimage.color import rgb2gray
 
 
 
+
 def normlized_image(image):
     im_float = image.astype(np.float32)
     im_float /= 255
@@ -26,6 +27,7 @@ def read_image(fileame, representation):
 def imdisplay(filename, representation):
     plt.figure()
     plt.imshow(read_image(filename,representation))
+    plt.show()
 
 
 def papo(im):
@@ -53,18 +55,29 @@ def papo1(im):
     return im.reshape(saveRows,saveCols,3)
 
 
+def rgb2yiq(imRGB):
+    trans = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321], [0.212, -0.523, 0.311]]).astype(float32)
+    return imRGB.dot(trans.T)
 
+def yiq2rgb(imYIQ):
+    trans = np.array([[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]]).astype(np.float32)
+    return imYIQ.dot(trans.T)
 
 
 
 
 print('Start main')
 im = read_image('jerusalem.jpg',2)
-#imdisplay('jerusalem.jpg',2)
+print(im[70][60])
+imdisplay('jerusalem.jpg',2)
 #im = im[300:304,200:204,:]
-im = papo(im)
-#im = papo1(im)
-
+#im1 = papo(im)
+#print(im1[70][60])
+#im3 = read_image('jerusalem.jpg',2)
+#im3 = papo2(im3)
+#print(im3[70][60])
+#im3 = papo3(im3)
+#print(im3[70][60])
 
 imsave('gray.jpg',im)
 
