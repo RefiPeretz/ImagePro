@@ -8,33 +8,48 @@ from skimage.color import rgb2gray
 
 
 def normlized_image(image):
-    im_float = image.astype(np.float32)
-    im_float /= 255
+    if(image.dtype != np.float32):
+        im_float = image.astype(np.float32)
+    if(image.max() > 1):
+        im_float /= 255
+
     return im_float
 
 
+def is_rgb(im):
+    #TODO verify if there is any better way
+    if(len(im.shape) == 3):
+        return True
+    else:
+        return False
+
+def validate_representation(representation):
+
+    if representation != 1 and representation != 2:
+        raise Exception("Unkonwn representaion")
+
 
 def read_image(fileame, representation):
-    print('Start func')
-    # TODO add input validation
+    validate_representation(representation)
+
     im = imread(fileame)
-    if(representation == 1 and len(im.shape) == 3):
+    if representation == 1 and is_rgb(im):
         # We should convert from Grayscale to RGB
-        print('rgb2gray')
         im =rgb2gray(im)
-        im = im.astype(np.float32)
-        return im
+        return im.astype(np.float32)
 
     return normlized_image(im)
+
+
 def imdisplay(filename, representation):
+    validate_representation(representation)
+
     im = read_image(filename,representation)
-    if(representation == 1):
+    plt.figure()
+    if representation == 1:
         plt.imshow(im, cmap=plt.cm.gray)
     else:
         plt.imshow(im)
-    plt.show()
-
-
 
 def rgb2yiq(imRGB):
     trans = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321], [0.212, -0.523, 0.311]]).astype(np.float32)
@@ -43,78 +58,39 @@ def rgb2yiq(imRGB):
 def yiq2rgb(imYIQ):
     trans = np.array([[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]]).astype(np.float32)
     return imYIQ.dot(trans.T)
-#
-# def histogram_equalize(im_orig):
-#     im_orig.astype(np.float32)
-#     #hist = np.histogram(im_orig, bins=255)
-#     im_orig*=255
-#     hist_orig, bounds = np.histogram(im_orig.flatten(), bins=256)
-#     print(hist_orig)
-#     #plt.plot((bounds[:-1] + bounds[1:]) / 2, hist)
-#     hist_cumsum = np.cumsum(hist_orig).astype(np.float32)
-#     # Normlize
-#
-#     hist_cumsum = 255*hist_cumsum / hist_cumsum[-1]
-#    # hist_cumsum = hist_cumsum.round().astype(np.uint8)
-#     print(hist_cumsum)
-#
-#     #Equalize image
-#     #im_eq = hist_cumsum[(im_orig.flatten().round()).astype(np.uint8)]
-#     im_eq = np.interp(im_orig.flatten(), bounds[:-1], hist_cumsum)
-#     im_eq = im_eq.reshape(im_orig.shape)
-#     im_eq = normlized_image(im_eq)
-#     #Extract new histogram
-#     hist_eq, bounds_eq =  np.histogram(im_eq, bins=256)
-#     plt.plot(hist_eq)
-#     plt.show()
-#     plt.imshow(im_eq, cmap=plt.cm.gray)
-#     plt.show()
-#
-#     return [im_eq, hist_orig, hist_eq]
-#
-#     # #extract new histogram
+
 
 
 
 def histogram_equalize(im_orig):
 
-    if(len(im_orig.shape) == 3):
-        print('here')
+    if(is_rgb(im_orig)):
         im_orig = rgb2yiq(im_orig)
         im_mod = im_orig[:,:,0]
     else:
         im_mod = im_orig
 
-    im_mod *=255
-    im_mod = im_mod.astype(np.uint8)
+    im_mod = (255*im_mod).astype(np.uint8)
     hist, bins = np.histogram(im_mod.flatten(), 256, [0,255])
-    cdf = np.cumsum(hist)
-    print(cdf)
-    maxC = max(cdf)
-    minC = min(cdf)
-    print(maxC ,minC)
-    cdf = (255 * (cdf - minC) / (maxC - minC))
-    print(cdf)
-    #cdf = cdf * 255 / im_mod.size
+    hist_cumsum = np.cumsum(hist)
+    maxC = max(hist_cumsum)
+    minC = min(hist_cumsum)
+    print(maxC, minC)
+    hist_cumsum = (255 * (hist_cumsum - minC) / (maxC - minC))
 
-    eq_image = np.interp(im_mod,bins[:-1],cdf)
-    try_hist = np.histogram(cdf[im_mod], 256, [0,256])[0]
+    eq_image = np.interp(im_mod,bins[:-1],hist_cumsum)
+    #try_hist = np.histogram(hist_cumsum[im_mod], 256, [0,256])[0]
 
-    eq_image_hist , eq_bins = np.histogram(eq_image, 256,  [0,256])
+    eq_image_hist = np.histogram(eq_image, 256,  [0,256])[0]
 
-    if (len(im_orig.shape) == 3):
-        print('here')
-        im_orig[:,:,0] = eq_image.astype(np.float32) / 255
+    if (is_rgb(im_orig)):
+        im_orig[:,:,0] = normlized_image(eq_image)
         eq_image = np.clip(yiq2rgb(im_orig),0,1)
     else:
-        eq_image = im_mod
-    #plt.imshow(eq_image)
-    #plt.show()
-    plt.figure()
-    plt.plot(eq_image_hist)
-    plt.figure()
-    plt.plot(try_hist, color='red')
-    plt.show()
+        eq_image = normlized_image(eq_image)
+
+    return [eq_image,hist,eq_image_hist]
+
 
 def quantize(im_orig, n_quant, n_iter):
 
@@ -125,50 +101,56 @@ def quantize(im_orig, n_quant, n_iter):
     else:
         im_mod = im_orig
     im_mod*= 255
-    im_mod = im_mod.astype(np.uint32)
+    im_mod = im_mod.astype(int)
     hist_orig = np.histogram(im_mod,256,[0,256])[0]
     hist_cumsum = np.cumsum(hist_orig)
-    values_Z = np.zeros((n_quant + 1,), dtype=np.uint32)
+    values_Z = np.zeros((n_quant + 1,), dtype=int)
     normlizer = hist_cumsum[-1]
 
     for i in range(1,n_quant):
         values_Z[i] = np.argwhere(hist_cumsum > normlizer * (i/n_quant))[0]
 
-    values_Z[n_quant] = 256
+    values_Z[n_quant] = 255
     index_matrix = np.arange(0,256)
-    values_Q = np.zeros((n_quant,), dtype=np.uint32)
+    values_Q = np.zeros((n_quant,), dtype=int)
     #split_image= np.split(hist_orig,values_Z)
     new_values_Z = np.copy(values_Z)
-    error_hist_q = np.array([])
-    for i in range(n_iter):
-        print(i)
-        calc_error = 0
-        split_image = np.split(hist_orig, values_Z)[1:-1]
-        split_image_weights = np.split(index_matrix,values_Z)[1:-1]
-        for j in range(len(values_Q)):
-            values_Q[j] = (np.sum(split_image[j]*split_image_weights[j]) / np.sum(split_image[j])).round().astype(np.uint32)
-            calc_error += np.dot(hist_orig[values_Z[j]:values_Z[j+1]],np.square(np.arange(values_Z[j],values_Z[j+1])- values_Q[j]))
+    error_hist_q = []
 
-        for j in range(len(values_Q) - 1):
-            new_values_Z[j+1] = ((values_Q[j]+values_Q[j+1]) / 2).astype(np.uint32)
+    for it in range(n_iter):
+        curr_err = 0
 
-        error_hist_q = np.append(error_hist_q,calc_error)
-        if(np.array_equal(new_values_Z,values_Z)):
+        # calc q and the error of the current iteration
+        z_min = 0
+        for i in range(n_quant):
+            z_max = values_Z[i + 1]
+            values_Q[i] = (hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.arange(values_Z[i], values_Z[i + 1] + 1)) /
+                        np.sum(hist_orig[values_Z[i]:values_Z[i + 1] + 1])).round().astype(np.uint32)
+            # calc error:
+            curr_err += hist_orig[z_min:z_max + 1].dot(np.square(np.arange(z_min, z_max + 1) - values_Q[i]))
+            z_min = z_max + 1
+
+        # calc new z values, the borders (0 and 255) remains the same, so calc only z_i:
+        new_values_Z = np.array([((values_Q[i] + values_Q[i + 1]) / 2).round().astype(np.uint32) for i in range(n_quant - 1)])
+
+        error_hist_q.append(curr_err)
+        if not np.array_equal(new_values_Z, values_Z[1:-1]):
+            values_Z[1:-1] = new_values_Z
+        else:  # got convergence!
+            print("CONVERGE")
             break
-        else:
-            values_Z = np.copy(new_values_Z)
 
-    for j in range(len(new_values_Z) - 1):
-        np.putmask(im_mod, (im_mod >= new_values_Z[j]) & (im_mod <= new_values_Z[j+1]),values_Q[j])
+    for j in range(len(values_Z) - 1):
+        np.putmask(im_mod, (im_mod >= values_Z[j]) & (im_mod <= values_Z[j+1]),values_Q[j])
 
     if (len(im_orig.shape) == 3):
         print('here')
         im_orig[:,:,0] = im_mod.astype(np.float32) / 255
         im_mod = np.clip(yiq2rgb(im_orig),0,1)
 
-    #plt.imshow(im_mod, cmap = plt.cm.gray)
+    plt.imshow(im_mod, cmap = plt.cm.gray)
     #plt.imshow(im_mod)
-    plt.plot(error_hist_q)
+    #plt.plot(error_hist_q)
     plt.show()
     return normlized_image(im_mod)
 
@@ -191,11 +173,19 @@ def quantize_rgb(im_orig, n_quant, n_iter):
 
 
 print('Start main')
-im = read_image('LowContrast.jpg',1)
-quantize(im,25,10)
+im = read_image('jerusalem.jpg',1)
+#im = imdisplay('jerusalem.jpg',1)
+#quantize(im,2,10)
 #quantize_rgb(im,3,10)
-#im2 = read_image('hist.jpg',1)
-#histogram_equalize(im)
+
+eq_im, hist , eq_hist = histogram_equalize(im)
+plt.figure(1)
+plt.imshow(eq_im,cmap = plt.cm.gray)
+plt.figure(1)
+plt.imshow(eq_im,cmap = plt.cm.gray)
+#plt.imshow(eq_im, cmap=plt.cm.gray)
+#plt.imshow(eq_im, cmap=plt.cm.gray)
+plt.show()
 
 #imdisplay('jerusalem.jpg',1)
 #im = im[300:304,200:204,:]
