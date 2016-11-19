@@ -9,11 +9,11 @@ from skimage.color import rgb2gray
 
 def normlized_image(image):
     if(image.dtype != np.float32):
-        im_float = image.astype(np.float32)
+        image = image.astype(np.float32)
     if(image.max() > 1):
-        im_float /= 255
+        image /= 255
 
-    return im_float
+    return image
 
 
 def is_rgb(im):
@@ -75,9 +75,8 @@ def histogram_equalize(im_orig):
     hist_cumsum = np.cumsum(hist)
     maxC = max(hist_cumsum)
     minC = min(hist_cumsum)
-    print(maxC, minC)
     hist_cumsum = (255 * (hist_cumsum - minC) / (maxC - minC))
-
+    #TODO decide between methods
     eq_image = np.interp(im_mod,bins[:-1],hist_cumsum)
     #try_hist = np.histogram(hist_cumsum[im_mod], 256, [0,256])[0]
 
@@ -94,65 +93,61 @@ def histogram_equalize(im_orig):
 
 def quantize(im_orig, n_quant, n_iter):
 
-    if(len(im_orig.shape) == 3):
-        print('here')
+    if(is_rgb(im_orig)):
         im_orig = rgb2yiq(im_orig)
         im_mod = im_orig[:,:,0]
     else:
         im_mod = im_orig
-    im_mod*= 255
-    im_mod = im_mod.astype(int)
+    #Normlize matrix
+    im_mod = (255*im_mod).astype(np.uint32)
     hist_orig = np.histogram(im_mod,256,[0,256])[0]
+    #Calculate cumsum for intital division
     hist_cumsum = np.cumsum(hist_orig)
     values_Z = np.zeros((n_quant + 1,), dtype=int)
     normlizer = hist_cumsum[-1]
-
+    #calculate initial division
     for i in range(1,n_quant):
         values_Z[i] = np.argwhere(hist_cumsum > normlizer * (i/n_quant))[0]
 
     values_Z[n_quant] = 255
-    index_matrix = np.arange(0,256)
     values_Q = np.zeros((n_quant,), dtype=int)
-    #split_image= np.split(hist_orig,values_Z)
     new_values_Z = np.copy(values_Z)
     error_hist_q = []
 
     for it in range(n_iter):
         curr_err = 0
 
-        # calc q and the error of the current iteration
-        z_min = 0
-        for i in range(n_quant):
-            z_max = values_Z[i + 1]
-            values_Q[i] = (hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.arange(values_Z[i], values_Z[i + 1] + 1)) /
-                        np.sum(hist_orig[values_Z[i]:values_Z[i + 1] + 1])).round().astype(np.uint32)
-            # calc error:
-            curr_err += hist_orig[z_min:z_max + 1].dot(np.square(np.arange(z_min, z_max + 1) - values_Q[i]))
-            z_min = z_max + 1
 
-        # calc new z values, the borders (0 and 255) remains the same, so calc only z_i:
-        new_values_Z = np.array([((values_Q[i] + values_Q[i + 1]) / 2).round().astype(np.uint32) for i in range(n_quant - 1)])
+        z_low = 0
+        for i in range(n_quant):
+            #Calculate Q base on Z
+            values_Q[i] = (hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.arange(values_Z[i], values_Z[i + 1] + 1)) /
+                        np.sum(hist_orig[values_Z[i]:values_Z[i + 1] + 1])).astype(np.uint32)
+
+            z_top = values_Z[i + 1]
+            # calc error:
+            curr_err += hist_orig[z_low:z_top + 1].dot(np.square(np.arange(z_low, z_top + 1) - values_Q[i]))
+            z_low = z_top + 1
+
+        #Calculate new z base on Q
+        for i in range(0,n_quant-1):
+            new_values_Z[i+1] = ((values_Q[i] + values_Q[i + 1]) / 2).astype(np.uint32)
+
 
         error_hist_q.append(curr_err)
-        if not np.array_equal(new_values_Z, values_Z[1:-1]):
-            values_Z[1:-1] = new_values_Z
-        else:  # got convergence!
-            print("CONVERGE")
+        if not np.array_equal(new_values_Z, values_Z):
+            values_Z = np.copy(new_values_Z)
+        else:
             break
-
+    #Update matrix pixcel values base on new Q and borders
     for j in range(len(values_Z) - 1):
         np.putmask(im_mod, (im_mod >= values_Z[j]) & (im_mod <= values_Z[j+1]),values_Q[j])
 
-    if (len(im_orig.shape) == 3):
-        print('here')
+    if (is_rgb(im_orig)):
         im_orig[:,:,0] = im_mod.astype(np.float32) / 255
         im_mod = np.clip(yiq2rgb(im_orig),0,1)
 
-    plt.imshow(im_mod, cmap = plt.cm.gray)
-    #plt.imshow(im_mod)
-    #plt.plot(error_hist_q)
-    plt.show()
-    return normlized_image(im_mod)
+    return [normlized_image(im_mod),error_hist_q]
 
 
 
@@ -174,18 +169,40 @@ def quantize_rgb(im_orig, n_quant, n_iter):
 
 print('Start main')
 im = read_image('jerusalem.jpg',1)
+im2 = read_image('jerusalem.jpg',2)
 #im = imdisplay('jerusalem.jpg',1)
 #quantize(im,2,10)
 #quantize_rgb(im,3,10)
 
-eq_im, hist , eq_hist = histogram_equalize(im)
-plt.figure(1)
-plt.imshow(eq_im,cmap = plt.cm.gray)
-plt.figure(1)
-plt.imshow(eq_im,cmap = plt.cm.gray)
-#plt.imshow(eq_im, cmap=plt.cm.gray)
-#plt.imshow(eq_im, cmap=plt.cm.gray)
+# eq_im, hist , eq_hist = histogram_equalize(im)
+# eq_im2, hist2 , eq_hist2 = histogram_equalize(im2)
+# plt.figure()
+# plt.subplot(2,2,1)
+# plt.imshow(eq_im,cmap = plt.cm.gray)
+# plt.subplot(2,2,2)
+# plt.imshow(eq_im2)
+# plt.subplot(2,2,3)
+# plt.plot(eq_hist)
+# plt.subplot(2,2,4)
+# plt.plot(eq_hist2)
+# plt.show()
+
+q,err = quantize(im,4,10)
+q2,err2 = quantize(im2,4,10)
+
+plt.figure()
+plt.subplot(2,2,1)
+plt.imshow(q,cmap = plt.cm.gray)
+plt.subplot(2,2,2)
+plt.imshow(q2)
+plt.subplot(2,2,3)
+plt.plot(err)
+plt.subplot(2,2,4)
+plt.plot(err2)
 plt.show()
+
+
+
 
 #imdisplay('jerusalem.jpg',1)
 #im = im[300:304,200:204,:]
