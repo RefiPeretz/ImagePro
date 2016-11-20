@@ -18,7 +18,7 @@ def normlized_image(image):
 
 def is_rgb(im):
     #TODO verify if there is any better way
-    if(len(im.shape) == 3):
+    if(im.ndim == 3):
         return True
     else:
         return False
@@ -63,6 +63,11 @@ def yiq2rgb(imYIQ):
 
 
 def histogram_equalize(im_orig):
+    """
+    Function that performs histogram equalization of a given grayscale or RGB image
+    :param im_orig: Original image
+    :return: Equalize image, original histogram, equalize image's histogram
+    """
 
     if(is_rgb(im_orig)):
         im_orig = rgb2yiq(im_orig)
@@ -92,6 +97,14 @@ def histogram_equalize(im_orig):
 
 
 def quantize(im_orig, n_quant, n_iter):
+    """
+    Quantize image: function that performs optimal quantization of a given grayscale or RGB image
+    grayscale.
+    :param im_orig: Original image
+    :param n_quant: How many quants
+    :param n_iter: number of max allowed iterations
+    :return: Quantiz image and error graph
+    """
 
     if(is_rgb(im_orig)):
         im_orig = rgb2yiq(im_orig)
@@ -103,35 +116,35 @@ def quantize(im_orig, n_quant, n_iter):
     hist_orig = np.histogram(im_mod,256,[0,256])[0]
     #Calculate cumsum for intital division
     hist_cumsum = np.cumsum(hist_orig)
-    values_Z = np.zeros((n_quant + 1,), dtype=int)
+    values_Z = np.zeros((n_quant + 1,), dtype=np.uint32)
     normlizer = hist_cumsum[-1]
     #calculate initial division
     for i in range(1,n_quant):
         values_Z[i] = np.argwhere(hist_cumsum > normlizer * (i/n_quant))[0]
 
     values_Z[n_quant] = 255
-    values_Q = np.zeros((n_quant,), dtype=int)
+    values_Q = np.zeros((n_quant,), dtype=np.uint32)
     new_values_Z = np.copy(values_Z)
     error_hist_q = []
 
     for it in range(n_iter):
+        print(it)
         curr_err = 0
 
-
-        z_low = 0
         for i in range(n_quant):
             #Calculate Q base on Z
+            #z_top = values_Z[i + 1]
             values_Q[i] = (hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.arange(values_Z[i], values_Z[i + 1] + 1)) /
-                        np.sum(hist_orig[values_Z[i]:values_Z[i + 1] + 1])).astype(np.uint32)
+                        np.sum(hist_orig[values_Z[i]:values_Z[i + 1] + 1])).round().astype(np.uint32)
 
-            z_top = values_Z[i + 1]
-            # calc error:
-            curr_err += hist_orig[z_low:z_top + 1].dot(np.square(np.arange(z_low, z_top + 1) - values_Q[i]))
-            z_low = z_top + 1
+            # # calc error:
+            curr_err += hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.square(np.arange(values_Z[i], values_Z[i + 1] + 1) - values_Q[i]))
+
+
 
         #Calculate new z base on Q
         for i in range(0,n_quant-1):
-            new_values_Z[i+1] = ((values_Q[i] + values_Q[i + 1]) / 2).astype(np.uint32)
+            new_values_Z[i+1] = ((values_Q[i] + values_Q[i + 1]) / 2).round().astype(np.uint32)
 
 
         error_hist_q.append(curr_err)
@@ -141,24 +154,53 @@ def quantize(im_orig, n_quant, n_iter):
             break
     #Update matrix pixcel values base on new Q and borders
     for j in range(len(values_Z) - 1):
-        np.putmask(im_mod, (im_mod >= values_Z[j]) & (im_mod <= values_Z[j+1]),values_Q[j])
+        np.putmask(im_mod, ((im_mod > values_Z[j]) & (im_mod <= values_Z[j+1])),values_Q[j])
+    # #TODO delete
+    papo = np.unique(np.copy(im_mod))
+    for i in range(len(papo)):
+        print(papo[i],values_Q[i], i, values_Z[i],values_Z[i+1])
 
     if (is_rgb(im_orig)):
         im_orig[:,:,0] = im_mod.astype(np.float32) / 255
         im_mod = np.clip(yiq2rgb(im_orig),0,1)
 
-    return [normlized_image(im_mod),error_hist_q]
+    return [normlized_image(im_mod),np.array(error_hist_q,)]
 
-
+def pad_list(l,max_size,pad_with):
+    """
+    Pads list to a given size with given value.
+    :param l: List to pad
+    :param max_size: Pad list to max_size
+    :param pad_with: pad list with this value
+    greyscale image (1) or an RGB image (2)
+    :return: Paded list.
+    """
+    return l + [pad_with]*(max_size - len(l))
 
 def quantize_rgb(im_orig, n_quant, n_iter):
-    im_orig[:,:,0 ] = quantize(im_orig[:,:,0],n_quant,n_iter)
-    im_orig[:, :,1] = quantize(im_orig[:, :,1], n_quant, n_iter)
-    im_orig[:, :, 2] = quantize(im_orig[:, :, 2], n_quant, n_iter)
-    #plt.imshow(im_mod, cmap = plt.cm.gray)
-    plt.imshow(im_orig)
-    #plt.plot(error_hist_q)
-    plt.show()
+    """
+    Bonus mission quantize full rgb by quantize every channel of RGB in separate.
+    Then shape it back to image. We use the quantize method refering the channels as
+    grayscale.
+    :param im_orig: Original image
+    :param n_quant: How many quants
+    :param n_iter: number of max allowed iterations
+    greyscale image (1) or an RGB image (2)
+    :return: Quantize RGB image and error grahph
+    """
+    im_work = np.copy(im_orig)
+    #Divide quantizie to 3 channels
+    im_work[:,:,0 ],err_red = quantize(im_work[:,:,0],n_quant,n_iter)
+    im_work[:, :,1],err_green = quantize(im_work[:, :,1], n_quant, n_iter)
+    im_work[:, :, 2],err_blue = quantize(im_work[:, :, 2], n_quant, n_iter)
+    err_red, err_green, err_blue = err_red.tolist(), err_green.tolist(), err_blue.tolist()
+    #Calculate error by padding the lists of errors according to the maximum list
+    max_list = max(len(err_red),len(err_green), len(err_blue))
+    #pad error list with last error value of each list to the max size.
+    err_red,err_green,err_blue = pad_list(err_red,max_list,err_red[-1]),pad_list(err_green,max_list,err_green[-1]),pad_list(err_blue,max_list,err_blue[-1])
+    calc_error = np.array([x + y + z for x, y ,z in zip(err_red, err_green,err_blue)]).astype(np.float32)
+    calc_error /= 3
+    return [im_work,calc_error]
 
 
 
@@ -168,8 +210,12 @@ def quantize_rgb(im_orig, n_quant, n_iter):
 
 
 print('Start main')
-im = read_image('jerusalem.jpg',1)
-im2 = read_image('jerusalem.jpg',2)
+jr = 'jerusalem.jpg'
+ben = 'LowContrast.jpg'
+mon = 'monkey.jpg'
+
+im = read_image(jr,1)
+im2 = read_image(jr,2)
 #im = imdisplay('jerusalem.jpg',1)
 #quantize(im,2,10)
 #quantize_rgb(im,3,10)
@@ -186,23 +232,33 @@ im2 = read_image('jerusalem.jpg',2)
 # plt.subplot(2,2,4)
 # plt.plot(eq_hist2)
 # plt.show()
+qn =70
+it = 40
 
-q,err = quantize(im,4,10)
-q2,err2 = quantize(im2,4,10)
-
-plt.figure()
-plt.subplot(2,2,1)
-plt.imshow(q,cmap = plt.cm.gray)
-plt.subplot(2,2,2)
-plt.imshow(q2)
-plt.subplot(2,2,3)
-plt.plot(err)
-plt.subplot(2,2,4)
-plt.plot(err2)
+q,err = quantize(im,qn,it)
+#q2,err2 = quantize(im2,qn,it)
+q = (255*q).astype(np.uint8)
+papo = np.histogram(q,257,[0,257])[0]
+plt.plot(papo)
 plt.show()
+print(np.count_nonzero(papo))
+#
+#
+# plt.figure()
+#
+# plt.subplot(2,2,1)
+# plt.imshow(q,cmap = plt.cm.gray)
+# plt.subplot(2,2,2)
+# plt.imshow(q2)
+# plt.subplot(2,2,3)
+# plt.plot(err)
+# plt.subplot(2,2,4)
+# plt.plot(err2)
+# plt.title('quant = ' + str(qn) + 'iteration = ' +str(it))
+# plt.show()
 
 
-
+# quantize_rgb(im2,qn,it)
 
 #imdisplay('jerusalem.jpg',1)
 #im = im[300:304,200:204,:]
