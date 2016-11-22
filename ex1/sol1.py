@@ -8,6 +8,11 @@ from skimage.color import rgb2gray
 
 
 def normlized_image(image):
+    """
+    Normlize image to float 32 and [0,1]
+    :param image: Reprentaion of display 1 for grayscale 2 for RGB
+    :return normlized image
+    """
     if(image.dtype != np.float32):
         image = image.astype(np.float32)
     if(image.max() > 1):
@@ -17,19 +22,34 @@ def normlized_image(image):
 
 
 def is_rgb(im):
-    #TODO verify if there is any better way
+    """
+    Verify if an image is RGB
+    :param im: Reprentaion of display 1 for grayscale 2 for RGB
+    """
     if(im.ndim == 3):
         return True
     else:
         return False
 
+
 def validate_representation(representation):
+    """
+    Validate reprentaion input
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    """
 
     if representation != 1 and representation != 2:
         raise Exception("Unkonwn representaion")
 
 
 def read_image(fileame, representation):
+    """
+    Read image by file name and normlize it to float 32 [0,1] representaion
+    according to RGB or Graysacle
+    :param filename: The name of the file that we should read.
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    :return normlized image
+    """
     validate_representation(representation)
 
     im = imread(fileame)
@@ -42,6 +62,11 @@ def read_image(fileame, representation):
 
 
 def imdisplay(filename, representation):
+    """
+    Read and display image
+    :param filename: The name of the file that we should read.
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    """
     validate_representation(representation)
 
     im = read_image(filename,representation)
@@ -52,10 +77,20 @@ def imdisplay(filename, representation):
         plt.imshow(im)
 
 def rgb2yiq(imRGB):
+    """
+    Transform an float 32 [0,1] RGB image to float32 [0,1]  YIQ image
+    :param im_orig: Original image
+    :return: YIQ format image
+    """
     trans = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321], [0.212, -0.523, 0.311]]).astype(np.float32)
     return imRGB.dot(trans.T)
 
 def yiq2rgb(imYIQ):
+    """
+    Transform an float 32 [0,1] YIQ image to float32 [0,1] RGB image
+    :param im_orig: Original image
+    :return: RGB format image
+    """
     trans = np.array([[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]]).astype(np.float32)
     return imYIQ.dot(trans.T)
 
@@ -76,14 +111,15 @@ def histogram_equalize(im_orig):
         im_mod = im_orig
 
     im_mod = (255*im_mod).astype(np.uint8)
+    #TODO do we need [0,255]
     hist, bins = np.histogram(im_mod.flatten(), 256, [0,255])
     hist_cumsum = np.cumsum(hist)
     maxC = max(hist_cumsum)
     minC = min(hist_cumsum)
     hist_cumsum = (255 * (hist_cumsum - minC) / (maxC - minC))
     #TODO decide between methods
-    eq_image = np.interp(im_mod,bins[:-1],hist_cumsum)
-    #try_hist = np.histogram(hist_cumsum[im_mod], 256, [0,256])[0]
+    eq_image = hist_cumsum[im_mod]
+
 
     eq_image_hist = np.histogram(eq_image, 256,  [0,256])[0]
 
@@ -112,18 +148,20 @@ def quantize(im_orig, n_quant, n_iter):
     else:
         im_mod = im_orig
     #Normlize matrix
-    im_mod = (255*im_mod).astype(np.uint32)
+    im_mod = (255*im_mod).astype(int)
     hist_orig = np.histogram(im_mod,256,[0,256])[0]
     #Calculate cumsum for intital division
     hist_cumsum = np.cumsum(hist_orig)
-    values_Z = np.zeros((n_quant + 1,), dtype=np.uint32)
+    hist_orig = hist_orig.astype(np.float32)
+    print(hist_cumsum)
+    values_Z = np.zeros((n_quant + 1,), dtype=np.float32)
     normlizer = hist_cumsum[-1]
     #calculate initial division
     for i in range(1,n_quant):
         values_Z[i] = np.argwhere(hist_cumsum > normlizer * (i/n_quant))[0]
 
-    values_Z[n_quant] = 255
-    values_Q = np.zeros((n_quant,), dtype=np.uint32)
+    values_Z[n_quant] = 255.0
+    values_Q = np.zeros((n_quant,), dtype=np.float32)
     new_values_Z = np.copy(values_Z)
     error_hist_q = []
 
@@ -133,28 +171,43 @@ def quantize(im_orig, n_quant, n_iter):
 
         for i in range(n_quant):
             #Calculate Q base on Z
-            #z_top = values_Z[i + 1]
-            values_Q[i] = (hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.arange(values_Z[i], values_Z[i + 1] + 1)) /
-                        np.sum(hist_orig[values_Z[i]:values_Z[i + 1] + 1])).round().astype(np.uint32)
+            cur_low_border = values_Z[i].astype(np.uint32)
+            cur_top_border = values_Z[i+1].astype(np.uint32) + 1
+            temp1 = (hist_orig[cur_low_border:cur_top_border].dot(np.arange(cur_low_border, cur_top_border))).astype(np.float32)
+            temp2 = np.sum(hist_orig[cur_low_border:cur_top_border])
+            values_Q[i] = temp1/temp2
 
             # # calc error:
-            curr_err += hist_orig[values_Z[i]:values_Z[i + 1] + 1].dot(np.square(np.arange(values_Z[i], values_Z[i + 1] + 1) - values_Q[i]))
+            curr_err += hist_orig[cur_low_border:cur_top_border].dot(np.square(np.arange(cur_low_border, cur_top_border) - values_Q[i]))
 
 
 
         #Calculate new z base on Q
         for i in range(0,n_quant-1):
-            new_values_Z[i+1] = ((values_Q[i] + values_Q[i + 1]) / 2).round().astype(np.uint32)
+            temp = (values_Q[i] + values_Q[i + 1]).astype(np.float32)
+            temp /= 2
+            new_values_Z[i+1] = temp
 
 
         error_hist_q.append(curr_err)
+        new_values_Z = np.round(new_values_Z)
+
         if not np.array_equal(new_values_Z, values_Z):
             values_Z = np.copy(new_values_Z)
         else:
             break
     #Update matrix pixcel values base on new Q and borders
-    for j in range(len(values_Z) - 1):
-        np.putmask(im_mod, ((im_mod > values_Z[j]) & (im_mod <= values_Z[j+1])),values_Q[j])
+    #values_Q = np.round(values_Q)
+    for j in range(n_quant):
+        # if(values_Z[j] == values_Z[j+1]):
+        #     values_Z[j+1] = values_Z[j+1] + 1
+        # if(j != n_quant-1 and values_Q[j] == values_Q[j+1]):
+        #     values_Q[j+1] = values_Q[j+1] + 1
+        if(j == 0):
+            np.putmask(im_mod, (im_mod >= values_Z[j]) & (im_mod <= values_Z[j + 1]), values_Q[j].round())
+            continue
+
+        np.putmask(im_mod, (im_mod > values_Z[j]) & (im_mod <= values_Z[j+1]) ,values_Q[j].round())
     # #TODO delete
     papo = np.unique(np.copy(im_mod))
     for i in range(len(papo)):
@@ -189,14 +242,14 @@ def quantize_rgb(im_orig, n_quant, n_iter):
     :return: Quantize RGB image and error grahph
     """
     im_work = np.copy(im_orig)
-    #Divide quantizie to 3 channels
+    # Divide quantizie to 3 channels
     im_work[:,:,0 ],err_red = quantize(im_work[:,:,0],n_quant,n_iter)
     im_work[:, :,1],err_green = quantize(im_work[:, :,1], n_quant, n_iter)
     im_work[:, :, 2],err_blue = quantize(im_work[:, :, 2], n_quant, n_iter)
     err_red, err_green, err_blue = err_red.tolist(), err_green.tolist(), err_blue.tolist()
-    #Calculate error by padding the lists of errors according to the maximum list
+    # Calculate error by padding the lists of errors according to the maximum list
     max_list = max(len(err_red),len(err_green), len(err_blue))
-    #pad error list with last error value of each list to the max size.
+    # Pad error list with last error value of each list to the max size.
     err_red,err_green,err_blue = pad_list(err_red,max_list,err_red[-1]),pad_list(err_green,max_list,err_green[-1]),pad_list(err_blue,max_list,err_blue[-1])
     calc_error = np.array([x + y + z for x, y ,z in zip(err_red, err_green,err_blue)]).astype(np.float32)
     calc_error /= 3
@@ -214,7 +267,7 @@ jr = 'jerusalem.jpg'
 ben = 'LowContrast.jpg'
 mon = 'monkey.jpg'
 
-im = read_image(jr,1)
+im = read_image(mon,1)
 im2 = read_image(jr,2)
 #im = imdisplay('jerusalem.jpg',1)
 #quantize(im,2,10)
@@ -238,10 +291,11 @@ it = 40
 q,err = quantize(im,qn,it)
 #q2,err2 = quantize(im2,qn,it)
 q = (255*q).astype(np.uint8)
-papo = np.histogram(q,257,[0,257])[0]
-plt.plot(papo)
-plt.show()
+papo = np.histogram(q,256,[0,256])[0]
 print(np.count_nonzero(papo))
+plt.plot(err)
+plt.show()
+
 #
 #
 # plt.figure()
@@ -271,13 +325,4 @@ print(np.count_nonzero(papo))
 #print(im3[70][60])
 
 #imsave('hist.jpg',im)
-
-
-
-
-
-
-
-
-
 

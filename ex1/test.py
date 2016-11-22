@@ -1,10 +1,12 @@
 import sol1
 import matplotlib.pyplot as plt
+import numpy as np
 
 #file = 'jerusalem.jpg'
 #file = 'LowContrast.jpg'
 file = 'monkey.jpg'
-
+qn = 60
+it = 40
 fig = plt.figure()
 #
 sub = fig.add_subplot(221, title='Original')
@@ -39,12 +41,12 @@ plt.plot(hist_orig)
 sub = fig.add_subplot(324, title='hist_eq')
 plt.plot(hist_eq)
 #
-#sub = fig.add_subplot(325, title='hist_orig_eq')
-#plt.plot(sol1.normalize_hist(hist_orig))
-# #
-#sub = fig.add_subplot(326, title='hist_eq_eq')
-#plt.plot(sol1.normalize_hist(hist_eq))
+sub = fig.add_subplot(325, title='hist_orig_eq')
+plt.plot(hist_orig)
 #
+sub = fig.add_subplot(326, title='hist_eq_eq')
+plt.plot(hist_eq)
+
 # # check histogram_equalize for rgb
 fig = plt.figure()
 im_eq , hist_orig , hist_eq = sol1.histogram_equalize(im_org)
@@ -61,16 +63,18 @@ plt.plot(hist_orig)
 sub = fig.add_subplot(324, title='hist_eq')
 plt.plot(hist_eq)
 #
-#sub = fig.add_subplot(325, title='hist_orig_eq')
-#plt.plot(sol1.normalize_hist(hist_orig))
-# #
-#sub = fig.add_subplot(326, title='hist_eq_eq')
-#plt.plot(sol1.normalize_hist(hist_eq))
+sub = fig.add_subplot(325, title='hist_orig_eq')
+plt.plot(hist_orig)
+#
+sub = fig.add_subplot(326, title='hist_eq_eq')
+plt.plot(hist_eq)
 #
 
 # check quantize for grayscale
 fig = plt.figure()
-im_quant, error = sol1.quantize(im_org_gray, 20, 50)
+print("Quant with: " + str(qn) +'for ' + str(it))
+im_quant, error = sol1.quantize(im_org_gray, qn, it)
+print('hist should be :' + str(qn) + 'actual' + str(np.count_nonzero(np.histogram(im_quant,256)[0])))
 
 sub = fig.add_subplot(321, title='im_org_gray')
 plt.imshow(im_org_gray, cmap=plt.cm.gray)
@@ -83,7 +87,7 @@ plt.plot(error)
 
 # check quantize for rgb
 fig = plt.figure()
-im_quant1, error = sol1.quantize(im_org, 20, 50)
+im_quant1, error = sol1.quantize(im_org, qn, it)
 
 sub = fig.add_subplot(321, title='im_org')
 plt.imshow(im_org)
@@ -96,18 +100,23 @@ plt.plot(error)
 
 #check quantize for rgb real
 fig = plt.figure()
-im_quant1 = sol1.quantize_rgb(sol1.np.copy(im_org), 4, 50)
+print("Quant with: " + str(qn) +'for ' + str(it))
+im_quant1 = sol1.quantize_rgb(sol1.np.copy(im_org), qn, it)
+
+print('hist should be :' + str(qn) + 'actual' + str(np.count_nonzero(np.histogram(sol1.rgb2yiq(im_quant1[0])[:,:,0],256)[0])))
 
 sub = fig.add_subplot(321, title='im_org')
 plt.imshow(im_org)
 
 sub = fig.add_subplot(322, title='im_org_quant_rgb')
 plt.imshow(im_quant1[0])
+sub = fig.add_subplot(323.5, title='error bonus')
+plt.plot(im_quant1[1])
 
-# sub = fig.add_subplot(325, title='hist_orig_eq')
-# plt.plot(sol1.normalize_hist(hist_orig))
-#
-# sub = fig.add_subplot(326, title='hist_eq_eq')
-# plt.plot(sol1.normalize_hist(hist_eq))
+sub = fig.add_subplot(325, title='hist_orig_eq')
+plt.plot(hist_orig)
+
+sub = fig.add_subplot(326, title='hist_eq_eq')
+plt.plot(hist_eq)
 
 plt.show()
