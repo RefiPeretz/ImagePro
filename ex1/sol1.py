@@ -75,6 +75,7 @@ def imdisplay(filename, representation):
         plt.imshow(im, cmap=plt.cm.gray)
     else:
         plt.imshow(im)
+    plt.show()
 
 def rgb2yiq(imRGB):
     """
@@ -83,7 +84,7 @@ def rgb2yiq(imRGB):
     :return: YIQ format image
     """
     trans = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321], [0.212, -0.523, 0.311]]).astype(np.float32)
-    return imRGB.dot(trans.T)
+    return imRGB.dot(trans.T).astype(np.float32)
 
 def yiq2rgb(imYIQ):
     """
@@ -92,7 +93,7 @@ def yiq2rgb(imYIQ):
     :return: RGB format image
     """
     trans = np.array([[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]]).astype(np.float32)
-    return imYIQ.dot(trans.T)
+    return imYIQ.dot(trans.T).astype(np.float32)
 
 
 
@@ -103,30 +104,27 @@ def histogram_equalize(im_orig):
     :param im_orig: Original image
     :return: Equalize image, original histogram, equalize image's histogram
     """
-
+    im_orig_work = np.copy(im_orig)
     if(is_rgb(im_orig)):
-        im_orig = rgb2yiq(im_orig)
-        im_mod = im_orig[:,:,0]
+        im_orig_work = rgb2yiq(im_orig_work)
+        im_mod = im_orig_work[:,:,0]
     else:
-        im_mod = im_orig
+        im_mod = im_orig_work
 
     im_mod = (255*im_mod).astype(np.uint8)
-    #TODO do we need [0,255]
-    hist, bins = np.histogram(im_mod.flatten(), 256, [0,255])
+    hist, bins = np.histogram(im_mod, 256,[0,255])
     hist_cumsum = np.cumsum(hist)
-    #TODO no really minimum
     maxC = max(hist_cumsum)
     minC = min(hist_cumsum)
     hist_cumsum = (255 * (hist_cumsum - minC) / (maxC - minC))
-    #TODO decide between methods
     eq_image = hist_cumsum[im_mod]
 
 
-    eq_image_hist = np.histogram(eq_image, 256,  [0,256])[0]
+    eq_image_hist = np.histogram(eq_image, 256,  [0,255])[0]
 
     if (is_rgb(im_orig)):
-        im_orig[:,:,0] = normlized_image(eq_image)
-        eq_image = np.clip(yiq2rgb(im_orig),0,1)
+        im_orig_work[:,:,0] = normlized_image(eq_image)
+        eq_image = np.clip(yiq2rgb(im_orig_work),0,1)
     else:
         eq_image = normlized_image(eq_image)
 
@@ -142,14 +140,13 @@ def quantize(im_orig, n_quant, n_iter):
     :param n_iter: number of max allowed iterations
     :return: Quantiz image and error graph
     """
+    im_orig_work = np.copy(im_orig)
 
     if(is_rgb(im_orig)):
-        im_orig = rgb2yiq(im_orig)
-        im_mod = im_orig[:,:,0]
-        #TODO should we delete
-        #im_mod = np.clip(im_mod,0,1)
+        im_orig_work = rgb2yiq(im_orig_work)
+        im_mod = im_orig_work[:,:,0]
     else:
-        im_mod = im_orig
+        im_mod = im_orig_work
     #Normlize matrix
     im_mod = (255*im_mod).astype(int)
     hist_orig = np.histogram(im_mod,256,[0,256])[0]
@@ -209,10 +206,8 @@ def quantize(im_orig, n_quant, n_iter):
         np.putmask(im_mod, (im_mod > values_Z[j]) & (im_mod <= values_Z[j+1]) ,values_Q[j].round())
 
     if (is_rgb(im_orig)):
-        #TODO delete
-        print(np.count_nonzero(np.histogram(im_mod,256)[0]))
-        im_orig[:,:,0] = im_mod.astype(np.float32) / 255
-        im_mod = yiq2rgb(im_orig)
+        im_orig_work[:,:,0] = im_mod.astype(np.float32) / 255
+        im_mod = yiq2rgb(im_orig_work)
         return [im_mod, np.array(error_hist_q, )]
 
     return [normlized_image(im_mod),np.array(error_hist_q,)]
@@ -252,12 +247,6 @@ def quantize_rgb(im_orig, n_quant, n_iter):
     calc_error = np.array([x + y + z for x, y ,z in zip(err_red, err_green,err_blue)]).astype(np.float32)
     calc_error /= 3
     return [im_work,calc_error]
-
-
-
-
-
-
 
 
 

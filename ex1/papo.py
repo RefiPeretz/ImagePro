@@ -2,10 +2,10 @@ import sol1
 import matplotlib.pyplot as plt
 import numpy as np
 
-file = 'external/jerusalem.jpg'
+#file = 'external/jerusalem.jpg'
 #file = 'LowContrast.jpg'
-#file = 'external/monkey.jpg'
-qn = 9
+file = 'external/monkey.jpg'
+qn = 4
 it = 400
 fig = plt.figure()
 #
@@ -49,7 +49,7 @@ plt.plot(hist_eq)
 
 # # check histogram_equalize for rgb
 fig = plt.figure()
-im_eq , hist_orig , hist_eq = sol1.histogram_equalize(im_org)
+im_eq , hist_orig2, hist_eq2= sol1.histogram_equalize(im_org)
 #
 sub = fig.add_subplot(321, title='im_org')
 plt.imshow(im_org, cmap=plt.cm.gray)
@@ -64,10 +64,10 @@ sub = fig.add_subplot(324, title='hist_eq')
 plt.plot(hist_eq)
 #
 sub = fig.add_subplot(325, title='hist_orig_eq')
-plt.plot(hist_orig)
+plt.plot(hist_orig2)
 #
 sub = fig.add_subplot(326, title='hist_eq_eq')
-plt.plot(hist_eq)
+plt.plot(hist_eq2)
 #
 
 # check quantize for grayscale
