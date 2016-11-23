@@ -160,7 +160,7 @@ def quantize(im_orig, n_quant, n_iter):
     normlizer = hist_cumsum[-1]
     #calculate initial division
     for i in range(1,n_quant):
-        values_Z[i] = np.where(hist_cumsum > normlizer * (i/n_quant))[0][0]
+        values_Z[i] = np.argwhere(hist_cumsum > normlizer * (i/n_quant))[0]
 
     values_Z[n_quant] = 255.0
     values_Q = np.zeros((n_quant,), dtype=np.float32)
@@ -176,7 +176,7 @@ def quantize(im_orig, n_quant, n_iter):
             cur_low_border = values_Z[i].astype(np.uint32)
             cur_top_border = values_Z[i+1].astype(np.uint32) + 1
             temp1 = (hist_orig[cur_low_border:cur_top_border].dot(np.arange(cur_low_border, cur_top_border))).astype(np.float32)
-            temp2 = np.sum(hist_orig[cur_low_border:cur_top_border]).astype(np.float32)
+            temp2 = np.sum(hist_orig[cur_low_border:cur_top_border])
             values_Q[i] = temp1/temp2
 
             # # calc error:
