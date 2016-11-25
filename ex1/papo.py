@@ -5,7 +5,7 @@ import numpy as np
 #file = 'external/jerusalem.jpg'
 #file = 'LowContrast.jpg'
 file = 'external/monkey.jpg'
-qn = 4
+qn = 2
 it = 400
 fig = plt.figure()
 #

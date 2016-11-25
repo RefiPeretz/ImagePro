@@ -83,7 +83,8 @@ def rgb2yiq(imRGB):
     :param im_orig: Original image
     :return: YIQ format image
     """
-    trans = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321], [0.212, -0.523, 0.311]]).astype(np.float32)
+    trans = np.array([[0.299, 0.587, 0.114], [0.596, -0.275, -0.321], [0.212, -0.523, 0.311]])\
+        .astype(np.float32)
     return imRGB.dot(trans.T).astype(np.float32)
 
 def yiq2rgb(imYIQ):
@@ -92,7 +93,8 @@ def yiq2rgb(imYIQ):
     :param im_orig: Original image
     :return: RGB format image
     """
-    trans = np.array([[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]]).astype(np.float32)
+    trans = np.array([[1.0, 0.956, 0.621], [1.0, -0.272, -0.647], [1.0, -1.106, 1.703]])\
+        .astype(np.float32)
     return imYIQ.dot(trans.T).astype(np.float32)
 
 
@@ -172,12 +174,14 @@ def quantize(im_orig, n_quant, n_iter):
             #Calculate Q base on Z
             cur_low_border = values_Z[i].astype(np.uint32)
             cur_top_border = values_Z[i+1].astype(np.uint32) + 1
-            temp1 = (hist_orig[cur_low_border:cur_top_border].dot(np.arange(cur_low_border, cur_top_border))).astype(np.float32)
+            temp1 = (hist_orig[cur_low_border:cur_top_border]\
+                     .dot(np.arange(cur_low_border, cur_top_border))).astype(np.float32)
             temp2 = np.sum(hist_orig[cur_low_border:cur_top_border]).astype(np.float32)
             values_Q[i] = temp1/temp2
 
             # # calc error:
-            curr_err += hist_orig[cur_low_border:cur_top_border].dot(np.square(np.arange(cur_low_border, cur_top_border) - values_Q[i]))
+            curr_err += hist_orig[cur_low_border:cur_top_border]\
+                .dot(np.square(np.arange(cur_low_border, cur_top_border) - values_Q[i]))
 
 
 
@@ -200,10 +204,12 @@ def quantize(im_orig, n_quant, n_iter):
     for j in range(n_quant):
         #We are not taking low borders so we have use case only for the first z which is 0
         if(j == 0):
-            np.putmask(im_mod, (im_mod >= values_Z[j]) & (im_mod <= values_Z[j + 1]), values_Q[j].round())
+            np.putmask(im_mod, (im_mod >= values_Z[j]) & (im_mod <= values_Z[j + 1]),\
+                       values_Q[j].round())
             continue
 
-        np.putmask(im_mod, (im_mod > values_Z[j]) & (im_mod <= values_Z[j+1]) ,values_Q[j].round())
+        np.putmask(im_mod, (im_mod > values_Z[j]) & (im_mod <= values_Z[j+1]),\
+                   values_Q[j].round())
 
     if (is_rgb(im_orig)):
         im_orig_work[:,:,0] = im_mod.astype(np.float32) / 255
@@ -243,8 +249,11 @@ def quantize_rgb(im_orig, n_quant, n_iter):
     # Calculate error by padding the lists of errors according to the maximum list
     max_list = max(len(err_red),len(err_green), len(err_blue))
     # Pad error list with last error value of each list to the max size.
-    err_red,err_green,err_blue = pad_list(err_red,max_list,err_red[-1]),pad_list(err_green,max_list,err_green[-1]),pad_list(err_blue,max_list,err_blue[-1])
-    calc_error = np.array([x + y + z for x, y ,z in zip(err_red, err_green,err_blue)]).astype(np.float32)
+    err_red,err_green,err_blue = pad_list(err_red,max_list,err_red[-1]),\
+                                 pad_list(err_green,max_list,err_green[-1]),\
+                                 pad_list(err_blue,max_list,err_blue[-1])
+    calc_error = np.array([x + y + z for x, y ,z in zip(err_red, err_green,err_blue)])\
+        .astype(np.float32)
     calc_error /= 3
     return [im_work,calc_error]
 
