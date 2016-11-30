@@ -5,6 +5,7 @@ from scipy.signal import convolve2d, convolve
 import matplotlib.pyplot as plt
 from scipy.misc import imread as imread, imsave as imsave
 from skimage.color import rgb2gray
+from math import floor
 
 
 def calc_matrix(size,exp_shape):
@@ -64,6 +65,27 @@ def blur_spatial(im, kernel_size):
     gaus_kerenel /= np.sum(gaus_kerenel)
     return convolve2d(im, gaus_kerenel, mode='same', boundary='wrap')
 
+def blur_fourier(im, kernel_size):
+    gaus_kerenel = gaus_2d(kernel_size)
+    gaus_kerenel /= np.sum(gaus_kerenel)
+    N,M = im.shape[0],im.shape[1]
+    i, j = floor(N / 2) + 1, floor(M / 2) + 1
+    gaus_kernel_pad = np.zeros(shape=(N, M))
+    print(gaus_kerenel)
+    low_x, top_x = i-floor(kernel_size/2), i + floor(kernel_size/2) + 1
+    low_y, top_y = j-floor(kernel_size/2), j + floor(kernel_size/2) + 1
+    # print(low_x, top_x)
+    # print(low_y, top_y)
+    gaus_kernel_pad[low_x:top_x, low_y:top_y] = gaus_kerenel
+    # pad_width_x = int((im.shape[0] - gaus_kerenel.shape[0])/2)
+    # pad_width_y = int((im.shape[1] - gaus_kerenel.shape[1])/2)
+    # gaus_kerenel = np.pad(gaus_kerenel,((pad_width_x,pad_width_x+1),(pad_width_y,pad_width_y+1)),mode='constant', constant_values=0)
+
+    gaus_kernel_pad = np.fft.fftshift(gaus_kernel_pad)
+    im_DFT, gaus_kerenel_DFT = DFT2(im),  DFT2(gaus_kernel_pad)
+    return IDFT2(im_DFT*gaus_kerenel_DFT).astype(np.float32)
+
+
 
 # papo = np.random.random(32)
 # papo = np.copy(papo).reshape(32,1)
@@ -116,9 +138,26 @@ def blur_spatial(im, kernel_size):
 # plt.show()
 #
 # print(fourier_res)
-papo = im_func.read_image('jerusalem.jpg',1)
+# papo = im_func.read_image('jerusalem.jpg',1)
+#
+# plt.imshow(blur_spatial(papo, 5),cmap=plt.cm.gray)
+# plt.show()
+# papo2 = np.zeros(shape=(16,10))
+# papo = np.array([[1,2,4,2,1],[1,2,5,2,1],[1,2,6,2,1],[1,2,7,2,1],[1,2,8,2,1]])
+# print(papo.shape)
+#
+# i,j = floor(16/2) + 1, floor(10/2) + 1
+# papo2[i-2:i+3, j-2:j+3] = papo
+# print(papo2)
+# print(papo2.shape)
+# print(papo2[i,j])
+# x = np.arange(8).reshape(2, 4)
+# idx = (1, 3)
+# print(np.insert(x, idx, 999, axis=1))
 
-plt.imshow(blur_spatial(papo, 5),cmap=plt.cm.gray)
+papo = im_func.read_image('jerusalem.jpg',1)
+blur = blur_fourier(papo,5)
+plt.imshow(blur,cmap=plt.cm.gray)
 plt.show()
 
 print('done')
