@@ -1,3 +1,4 @@
+#TODO delete
 import sol1 as im_func
 import numpy as np
 from scipy.signal import convolve2d, convolve
@@ -36,21 +37,32 @@ def conv_der(im):
     return np.sqrt(np.power(derv_X, 2) + np.power(drev_Y, 2))
 
 def fourier_der(im):
-    # N = np.round(im.shape[1] / 2)
-    #
-    # im_dx = np.fft.fftshift(DFT2(im)) * np.arange(-N, N, 1)
-    # im_dx = IDFT2(np.fft.ifftshift(im_dx)) * (2 * np.pi * 1j / N)
-    # # y derivative
-    # M = np.round(im.shape[0] / 2)
-    # im_dy = (np.fft.fftshift(DFT2(im)).T * np.arange(-M, M, 1)).T
-    # im_dy = IDFT2(np.fft.ifftshift(im_dy)) * (2 * np.pi * 1j / M)  # TODO devide again by M or N?
-    # return (np.sqrt(np.abs(im_dx) * 2 + np.abs(im_dy) * 2)).astype(np.float32)
-    im_DFT = np.fft.fftshift(DFT2(im))
-    N_F, M_F, N , M = np.round(im_DFT.shape[1]/2), np.round(im_DFT.shape[0]/2), im_DFT.shape[1] , im_DFT.shape[0]
-    derv_X_dft = im_DFT*np.arange(-N_F, N_F,1)
-    derv_Y_dft = im_DFT.T * np.arange(-M_F, M_F,1).T
-    derv_X, derv_Y = DFT2(np.fft.ifftshift(derv_X_dft)) * (2j * np.pi / N), DFT2(np.fft.ifftshift(derv_Y_dft)) * (2j * np.pi / N)
-    return (np.sqrt(np.abs(derv_X) * 2 + np.abs(derv_Y) * 2)).astype(np.float32)
+    #TODO check if we need check odd or even right now
+    im_DFT = DFT2(im)
+    N_F, M_F, N , M = int(im_DFT.shape[1]/2), int(im_DFT.shape[0]/2), im_DFT.shape[1] , im_DFT.shape[0]
+    u_X = np.tile(np.concatenate((np.arange(0,N_F,1),np.arange(-N_F,0,1))).reshape(1,N), (M,1))
+    u_Y = np.tile(np.concatenate((np.arange(0, M_F, 1), np.arange(-M_F, 0, 1))).reshape(M, 1), (1, N))
+
+    derv_X_dft = u_X * im_DFT
+    derv_Y_dft =  u_Y * im_DFT
+    derv_X, derv_Y = IDFT2((derv_X_dft) * (2j * np.pi / M)), IDFT2((derv_Y_dft) * (2j * np.pi / N))
+    return (np.sqrt(np.abs(derv_X) ** 2 + np.abs(derv_Y) ** 2))
+
+
+def gaus_1d(kernel_size):
+    gaus_kernel = np.array([1, 1])
+    for i in range(kernel_size - 2):
+        gaus_kernel = convolve(gaus_kernel, np.array([1, 1]), mode ='full')
+    return gaus_kernel
+
+def gaus_2d(kernel_size):
+    d1_kernel = gaus_1d(kernel_size).reshape(1,kernel_size)
+    return convolve2d(d1_kernel, d1_kernel.T, mode='full').astype(np.float32)
+
+def blur_spatial(im, kernel_size):
+    gaus_kerenel = gaus_2d(kernel_size)
+    gaus_kerenel /= np.sum(gaus_kerenel)
+    return convolve2d(im, gaus_kerenel, mode='same', boundary='wrap')
 
 
 # papo = np.random.random(32)
@@ -63,6 +75,7 @@ def fourier_der(im):
 # # r3=DFT(papo2)
 # # r2 = (np.fft.fft2(papo2))
 #
+
 # print(np.allclose(r1,r2))
 #
 # r1= IDFT(DFT(papo))
@@ -80,7 +93,7 @@ def fourier_der(im):
 # r2 = np.fft.fft2(np.copy(papo))
 # print(np.allclose(r1,r2))
 #
-# papo = np.random.random(16).reshape(4,4)
+# papo = im_func.read_image('monkey.jpg',1)
 # r3 = IDFT2(DFT2(np.copy(papo)))
 # r4 = np.fft.ifft2(np.fft.fft2(np.copy(papo)))
 # # print(r3)
@@ -94,12 +107,18 @@ def fourier_der(im):
 #
 # plt.imshow(conv_res, cmap=plt.cm.gray)
 # plt.show()
-
+#
+# papo = im_func.read_image('jerusalem.jpg',1)
+#
+# fourier_res = fourier_der(papo)
+#
+# plt.imshow(fourier_res, cmap=plt.cm.gray)
+# plt.show()
+#
+# print(fourier_res)
 papo = im_func.read_image('jerusalem.jpg',1)
 
-fourier_res = fourier_der(papo)
-
-plt.imshow(fourier_res, cmap=plt.cm.gray)
+plt.imshow(blur_spatial(papo, 5),cmap=plt.cm.gray)
 plt.show()
 
 print('done')
