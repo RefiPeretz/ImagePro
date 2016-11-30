@@ -36,53 +36,70 @@ def conv_der(im):
     return np.sqrt(np.power(derv_X, 2) + np.power(drev_Y, 2))
 
 def fourier_der(im):
+    # N = np.round(im.shape[1] / 2)
+    #
+    # im_dx = np.fft.fftshift(DFT2(im)) * np.arange(-N, N, 1)
+    # im_dx = IDFT2(np.fft.ifftshift(im_dx)) * (2 * np.pi * 1j / N)
+    # # y derivative
+    # M = np.round(im.shape[0] / 2)
+    # im_dy = (np.fft.fftshift(DFT2(im)).T * np.arange(-M, M, 1)).T
+    # im_dy = IDFT2(np.fft.ifftshift(im_dy)) * (2 * np.pi * 1j / M)  # TODO devide again by M or N?
+    # return (np.sqrt(np.abs(im_dx) * 2 + np.abs(im_dy) * 2)).astype(np.float32)
     im_DFT = np.fft.fftshift(DFT2(im))
-    derv_X_dft = np.fft.fftshift((im_DFT * (np.arange(im_DFT.shape[0]).reshape(im_DFT.shape[0], 1))))
-    derv_Y_dft = np.fft.fftshift((im_DFT * (np.arange(im_DFT.shape[1]).reshape(im_DFT.shape[1], 1))))
-    return np.sqrt(np.abs(derv_X_dft) ** 2 + np.abs(derv_Y_dft) ** 2)
+    N_F, M_F, N , M = np.round(im_DFT.shape[1]/2), np.round(im_DFT.shape[0]/2), im_DFT.shape[1] , im_DFT.shape[0]
+    derv_X_dft = im_DFT*np.arange(-N_F, N_F,1)
+    derv_Y_dft = im_DFT.T * np.arange(-M_F, M_F,1).T
+    derv_X, derv_Y = DFT2(np.fft.ifftshift(derv_X_dft)) * (2j * np.pi / N), DFT2(np.fft.ifftshift(derv_Y_dft)) * (2j * np.pi / N)
+    return (np.sqrt(np.abs(derv_X) * 2 + np.abs(derv_Y) * 2)).astype(np.float32)
 
 
-papo = np.random.random(32)
-papo = np.copy(papo).reshape(32,1)
-
-
-
-
-r1= IDFT(DFT(papo))
-r2 = np.fft.ifft(np.fft.fft(papo))
+# papo = np.random.random(32)
+# papo = np.copy(papo).reshape(32,1)
+#
+#
 # r1= DFT(papo)
-# r3=DFT(papo2)
-# r2 = (np.fft.fft2(papo2))
-
-print(np.allclose(r1,r2))
-
-
-papo = im_func.read_image('monkey.jpg',1)
-#papo = np.random.random(16).reshape(4,4)
-r1 = DFT2(np.copy(papo))
-r2 = np.fft.fft2(np.copy(papo))
-print(np.allclose(r1,r2))
-
-papo = np.random.random(16).reshape(4,4)
-r3 = IDFT2(DFT2(np.copy(papo)))
-r4 = np.fft.ifft2(np.fft.fft2(np.copy(papo)))
-# print(r3)
-# print('\n')
-# print(r4)
-print(np.allclose(r3,r4))
-
-
-papo = im_func.read_image('jerusalem.jpg',1)
-conv_res = conv_der(papo)
-
-plt.imshow(conv_res, cmap=plt.cm.gray)
-plt.show()
+# r2 = np.fft.fft2(papo)
+# # r1= DFT(papo)
+# # r3=DFT(papo2)
+# # r2 = (np.fft.fft2(papo2))
+#
+# print(np.allclose(r1,r2))
+#
+# r1= IDFT(DFT(papo))
+# r2 = np.fft.ifft2(np.fft.fft2(papo))
+# # r1= DFT(papo)
+# # r3=DFT(papo2)
+# # r2 = (np.fft.fft2(papo2))
+#
+# print(np.allclose(r1,r2))
+#
+#
+# papo = im_func.read_image('monkey.jpg',1)
+# #papo = np.random.random(16).reshape(4,4)
+# r1 = DFT2(np.copy(papo))
+# r2 = np.fft.fft2(np.copy(papo))
+# print(np.allclose(r1,r2))
+#
+# papo = np.random.random(16).reshape(4,4)
+# r3 = IDFT2(DFT2(np.copy(papo)))
+# r4 = np.fft.ifft2(np.fft.fft2(np.copy(papo)))
+# # print(r3)
+# # print('\n')
+# # print(r4)
+# print(np.allclose(r3,r4))
+#
+#
+# papo = im_func.read_image('jerusalem.jpg',1)
+# conv_res = conv_der(papo)
+#
+# plt.imshow(conv_res, cmap=plt.cm.gray)
+# plt.show()
 
 papo = im_func.read_image('jerusalem.jpg',1)
 
 fourier_res = fourier_der(papo)
 
-plt.imshow(conv_res, cmap=plt.cm.gray)
+plt.imshow(fourier_res, cmap=plt.cm.gray)
 plt.show()
 
 print('done')
