@@ -8,18 +8,37 @@ from skimage.color import rgb2gray
 from math import floor
 
 
+
+
+
 def calc_matrix(size,exp_shape):
+    """
+    Calculate vandermonde matrix for size and type(DFT/IDFT)
+    :param size: The size of the matrix
+    :param exp_shape: The type of the matrix DFT/IDFT
+    :return sizeXsize vandermonde matrix.
+    """
     N = size
     x = np.arange(N)
     u = np.arange(N).reshape(N, 1)
     return np.exp(-2j * (np.pi * u * x / N)) if exp_shape == 1 else np.exp(2j * (np.pi * u * x / N))
 
 def DFT(signal):
+    """
+    Calculate the DFT of the signal
+    :param signal: Signal to transform.
+    :return transformed signal
+    """
     work_sig = np.copy(signal)
     w_matrix = calc_matrix(signal.shape[0],1)
     return np.dot(w_matrix, work_sig).astype(np.complex128)
 
 def IDFT(signal):
+    """
+    Calculate the IDFT of the signal
+    :param signal: Signal to transform.
+    :return transformed signal.
+    """
     work_sig = np.copy(signal)
     N = signal.shape[0]
     w_matrix = calc_matrix(N,2)
@@ -27,17 +46,37 @@ def IDFT(signal):
 
 
 def DFT2(image):
+    """
+    Calculate the DFT of an image
+    :param image:
+    :return transformed image
+    """
     return np.dot(DFT(image), calc_matrix(image.shape[1],1)).astype(np.complex128)
 
 def IDFT2(image):
+    """
+    Calculate the DFT of an image
+    :param image:
+    :return transformed image
+    """
     return np.dot(IDFT(image), calc_matrix(image.shape[1],2)) / image.shape[1]
 
 def conv_der(im):
+    """
+    Calculate the magnitude of an image
+    :param image:
+    :return magnitude of an image
+    """
     derv_X = convolve2d(im, np.array([1, 0, -1]).reshape(1,3), mode="same")
     drev_Y = convolve2d(im, np.array([[1], [0], [-1]]).reshape(3,1), mode="same")
     return np.sqrt(np.power(derv_X, 2) + np.power(drev_Y, 2))
 
 def fourier_der(im):
+    """
+    Calculate the magnitude of an image by fourier transform.
+    :param image:
+    :return magnitude of an image ( by fourier transform)
+    """
     #TODO check if we need check odd or even right now
     im_DFT = DFT2(im)
     N_F, M_F, N , M = int(im_DFT.shape[1]/2), int(im_DFT.shape[0]/2), im_DFT.shape[1] , im_DFT.shape[0]
@@ -51,35 +90,55 @@ def fourier_der(im):
 
 
 def gaus_1d(kernel_size):
+    """
+    Calculate 1d gaus kernel.
+    :param kernel_size: size of the kernel we want.
+    :return 1d kernel of desiered size.
+    """
     gaus_kernel = np.array([1, 1])
     for i in range(kernel_size - 2):
         gaus_kernel = convolve(gaus_kernel, np.array([1, 1]), mode ='full')
     return gaus_kernel
 
 def gaus_2d(kernel_size):
+    """
+    Calculate 2d gaus kernel by 1d gaus kernel.
+    :param kernel_size: size of the kernel we want.
+    :return 2d kernel of desiered size.
+    """
     d1_kernel = gaus_1d(kernel_size).reshape(1,kernel_size)
     return convolve2d(d1_kernel, d1_kernel.T, mode='full').astype(np.float32)
 
 def blur_spatial(im, kernel_size):
+    """
+    Blur image in spatial using convolution with
+     a given size gaus kernel
+    :param im, image to blur
+    :param kernel_size: size of the kernel we want.
+    :return blur image.
+    """
     gaus_kerenel = gaus_2d(kernel_size)
     gaus_kerenel /= np.sum(gaus_kerenel)
     return convolve2d(im, gaus_kerenel, mode='same', boundary='wrap')
 
 def blur_fourier(im, kernel_size):
+    """
+    Blur image in fourier using dot with transformed
+    kerenel in a given size gaus kernel
+    :param im, image to blur
+    :param kernel_size: size of the kernel we want.
+    :return Blur image.
+    """
     gaus_kerenel = gaus_2d(kernel_size)
     gaus_kerenel /= np.sum(gaus_kerenel)
     N,M = im.shape[0],im.shape[1]
-    i, j = floor(N / 2) + 1, floor(M / 2) + 1
+    i, j = floor(N / 2), floor(M / 2)
     gaus_kernel_pad = np.zeros(shape=(N, M))
-    print(gaus_kerenel)
     low_x, top_x = i-floor(kernel_size/2), i + floor(kernel_size/2) + 1
     low_y, top_y = j-floor(kernel_size/2), j + floor(kernel_size/2) + 1
-    # print(low_x, top_x)
-    # print(low_y, top_y)
+
     gaus_kernel_pad[low_x:top_x, low_y:top_y] = gaus_kerenel
-    # pad_width_x = int((im.shape[0] - gaus_kerenel.shape[0])/2)
-    # pad_width_y = int((im.shape[1] - gaus_kerenel.shape[1])/2)
-    # gaus_kerenel = np.pad(gaus_kerenel,((pad_width_x,pad_width_x+1),(pad_width_y,pad_width_y+1)),mode='constant', constant_values=0)
+
 
     gaus_kernel_pad = np.fft.fftshift(gaus_kernel_pad)
     im_DFT, gaus_kerenel_DFT = DFT2(im),  DFT2(gaus_kernel_pad)
@@ -124,17 +183,17 @@ def blur_fourier(im, kernel_size):
 # print(np.allclose(r3,r4))
 #
 #
-# papo = im_func.read_image('jerusalem.jpg',1)
+# papo = im_func.read_image('pol1.jpg',1)
 # conv_res = conv_der(papo)
 #
-# plt.imshow(conv_res, cmap=plt.cm.gray)
+# plt.imshow(conv_res)
 # plt.show()
 #
-# papo = im_func.read_image('jerusalem.jpg',1)
+# papo = im_func.read_image('pol2.jpg',1)
 #
 # fourier_res = fourier_der(papo)
 #
-# plt.imshow(fourier_res, cmap=plt.cm.gray)
+# plt.imshow(fourier_res)
 # plt.show()
 #
 # print(fourier_res)
@@ -155,8 +214,8 @@ def blur_fourier(im, kernel_size):
 # idx = (1, 3)
 # print(np.insert(x, idx, 999, axis=1))
 
-papo = im_func.read_image('jerusalem.jpg',1)
-blur = blur_fourier(papo,5)
+papo = im_func.read_image('monkey.jpg',1)
+blur = blur_fourier(papo,25)
 plt.imshow(blur,cmap=plt.cm.gray)
 plt.show()
 

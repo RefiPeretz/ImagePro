@@ -118,7 +118,7 @@ def histogram_equalize(im_orig):
     hist_cumsum = np.cumsum(hist)
     maxC = max(hist_cumsum)
     minC = min(hist_cumsum)
-    hist_cumsum = (255 * (hist_cumsum - minC) / (maxC - minC))
+    hist_cumsum = np.round((255 * (hist_cumsum - minC) / (maxC - minC)))
     eq_image = hist_cumsum[im_mod]
 
 
