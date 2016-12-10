@@ -1,14 +1,64 @@
-#TODO delete
-import sol1 as im_func
 import numpy as np
 from scipy.signal import convolve2d, convolve
-import matplotlib.pyplot as plt
-from scipy.misc import imread as imread, imsave as imsave
+from scipy.misc import imread as imread
 from skimage.color import rgb2gray
 from math import floor
 
 
+#TODO Ask if this is this is the function you need to import
 
+def normlized_image(image):
+    """
+    Normlize image to float 32 and [0,1]
+    :param image: Reprentaion of display 1 for grayscale 2 for RGB
+    :return normlized image
+    """
+    if(image.dtype != np.float32):
+        image = image.astype(np.float32)
+    if(image.max() > 1):
+        image /= 255
+
+    return image
+
+
+def is_rgb(im):
+    """
+    Verify if an image is RGB
+    :param im: Reprentaion of display 1 for grayscale 2 for RGB
+    """
+    if(im.ndim == 3):
+        return True
+    else:
+        return False
+
+
+def validate_representation(representation):
+    """
+    Validate reprentaion input
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    """
+
+    if representation != 1 and representation != 2:
+        raise Exception("Unkonwn representaion")
+
+
+def read_image(fileame, representation):
+    """
+    Read image by file name and normlize it to float 32 [0,1] representaion
+    according to RGB or Graysacle
+    :param filename: The name of the file that we should read.
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    :return normlized image
+    """
+    validate_representation(representation)
+
+    im = imread(fileame)
+    if representation == 1 and is_rgb(im):
+        # We should convert from Grayscale to RGB
+        im =rgb2gray(im)
+        return im.astype(np.float32)
+
+    return normlized_image(im)
 
 
 def calc_matrix(size,exp_shape):
@@ -69,7 +119,7 @@ def conv_der(im):
     """
     derv_X = convolve2d(im, np.array([1, 0, -1]).reshape(1,3), mode="same")
     drev_Y = convolve2d(im, np.array([[1], [0], [-1]]).reshape(3,1), mode="same")
-    return np.sqrt(np.power(derv_X, 2) + np.power(drev_Y, 2))
+    return np.sqrt(np.power(derv_X, 2) + np.power(drev_Y, 2)).astype(np.float32)
 
 def fourier_der(im):
     """
@@ -79,14 +129,17 @@ def fourier_der(im):
     """
     #TODO check if we need check odd or even right now
     im_DFT = DFT2(im)
-    N_F, M_F, N , M = int(im_DFT.shape[1]/2), int(im_DFT.shape[0]/2), im_DFT.shape[1] , im_DFT.shape[0]
-    u_X = np.tile(np.concatenate((np.arange(0,N_F,1),np.arange(-N_F,0,1))).reshape(1,N), (M,1))
-    u_Y = np.tile(np.concatenate((np.arange(0, M_F, 1), np.arange(-M_F, 0, 1))).reshape(M, 1), (1, N))
+    N_F, M_F, N_F_MINUS, M_F_MINUS, N , M = floor(im_DFT.shape[1]/2), floor(im_DFT.shape[0]/2), \
+                                            floor(-1*(im_DFT.shape[1] / 2)),\
+                                            floor(-1*(im_DFT.shape[0] / 2)),\
+                                            im_DFT.shape[1], im_DFT.shape[0]
+    u_Y = np.tile(np.concatenate((np.arange(0, M_F, 1), np.arange(M_F_MINUS, 0, 1))).reshape(M, 1), (1, N))
+    u_X = np.tile(np.concatenate((np.arange(0,N_F,1),np.arange(N_F_MINUS,0,1))).reshape(1,N), (M,1))
 
     derv_X_dft = u_X * im_DFT
     derv_Y_dft =  u_Y * im_DFT
     derv_X, derv_Y = IDFT2((derv_X_dft) * (2j * np.pi / M)), IDFT2((derv_Y_dft) * (2j * np.pi / N))
-    return (np.sqrt(np.abs(derv_X) ** 2 + np.abs(derv_Y) ** 2))
+    return (np.sqrt(np.abs(derv_X) ** 2 + np.abs(derv_Y) ** 2)).astype(np.float32)
 
 
 def gaus_1d(kernel_size):
@@ -142,7 +195,8 @@ def blur_fourier(im, kernel_size):
 
     gaus_kernel_pad = np.fft.fftshift(gaus_kernel_pad)
     im_DFT, gaus_kerenel_DFT = DFT2(im),  DFT2(gaus_kernel_pad)
-    return IDFT2(im_DFT*gaus_kerenel_DFT).astype(np.float32)
+    #TODO need real?
+    return IDFT2(im_DFT*gaus_kerenel_DFT).real.astype(np.float32)
 
 
 
@@ -189,11 +243,11 @@ def blur_fourier(im, kernel_size):
 # plt.imshow(conv_res)
 # plt.show()
 #
-# papo = im_func.read_image('pol2.jpg',1)
+# papo = im_func.read_image('odd.jpg',1)
 #
 # fourier_res = fourier_der(papo)
 #
-# plt.imshow(fourier_res)
+# plt.imshow(fourier_res,cmap=plt.cm.gray)
 # plt.show()
 #
 # print(fourier_res)
@@ -214,9 +268,9 @@ def blur_fourier(im, kernel_size):
 # idx = (1, 3)
 # print(np.insert(x, idx, 999, axis=1))
 
-papo = im_func.read_image('monkey.jpg',1)
-blur = blur_fourier(papo,25)
-plt.imshow(blur,cmap=plt.cm.gray)
-plt.show()
-
-print('done')
+# papo = im_func.read_image('monkey.jpg',1)
+# blur = blur_fourier(papo,25)
+# plt.imshow(blur,cmap=plt.cm.gray)
+# plt.show()
+#
+# print('done')
