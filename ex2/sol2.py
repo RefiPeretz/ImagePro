@@ -5,7 +5,6 @@ from skimage.color import rgb2gray
 from math import floor
 
 
-#TODO Ask if this is this is the function you need to import
 
 def normlized_image(image):
     """
@@ -127,7 +126,6 @@ def fourier_der(im):
     :param image:
     :return magnitude of an image ( by fourier transform)
     """
-    #TODO check if we need check odd or even right now
     im_DFT = DFT2(im)
     N_F, M_F, N_F_MINUS, M_F_MINUS, N , M = floor(im_DFT.shape[1]/2), floor(im_DFT.shape[0]/2), \
                                             floor(-1*(im_DFT.shape[1] / 2)),\
@@ -195,82 +193,4 @@ def blur_fourier(im, kernel_size):
 
     gaus_kernel_pad = np.fft.fftshift(gaus_kernel_pad)
     im_DFT, gaus_kerenel_DFT = DFT2(im),  DFT2(gaus_kernel_pad)
-    #TODO need real?
     return IDFT2(im_DFT*gaus_kerenel_DFT).real.astype(np.float32)
-
-
-
-# papo = np.random.random(32)
-# papo = np.copy(papo).reshape(32,1)
-#
-#
-# r1= DFT(papo)
-# r2 = np.fft.fft2(papo)
-# # r1= DFT(papo)
-# # r3=DFT(papo2)
-# # r2 = (np.fft.fft2(papo2))
-#
-
-# print(np.allclose(r1,r2))
-#
-# r1= IDFT(DFT(papo))
-# r2 = np.fft.ifft2(np.fft.fft2(papo))
-# # r1= DFT(papo)
-# # r3=DFT(papo2)
-# # r2 = (np.fft.fft2(papo2))
-#
-# print(np.allclose(r1,r2))
-#
-#
-# papo = im_func.read_image('monkey.jpg',1)
-# #papo = np.random.random(16).reshape(4,4)
-# r1 = DFT2(np.copy(papo))
-# r2 = np.fft.fft2(np.copy(papo))
-# print(np.allclose(r1,r2))
-#
-# papo = im_func.read_image('monkey.jpg',1)
-# r3 = IDFT2(DFT2(np.copy(papo)))
-# r4 = np.fft.ifft2(np.fft.fft2(np.copy(papo)))
-# # print(r3)
-# # print('\n')
-# # print(r4)
-# print(np.allclose(r3,r4))
-#
-#
-# papo = im_func.read_image('pol1.jpg',1)
-# conv_res = conv_der(papo)
-#
-# plt.imshow(conv_res)
-# plt.show()
-#
-# papo = im_func.read_image('odd.jpg',1)
-#
-# fourier_res = fourier_der(papo)
-#
-# plt.imshow(fourier_res,cmap=plt.cm.gray)
-# plt.show()
-#
-# print(fourier_res)
-# papo = im_func.read_image('jerusalem.jpg',1)
-#
-# plt.imshow(blur_spatial(papo, 5),cmap=plt.cm.gray)
-# plt.show()
-# papo2 = np.zeros(shape=(16,10))
-# papo = np.array([[1,2,4,2,1],[1,2,5,2,1],[1,2,6,2,1],[1,2,7,2,1],[1,2,8,2,1]])
-# print(papo.shape)
-#
-# i,j = floor(16/2) + 1, floor(10/2) + 1
-# papo2[i-2:i+3, j-2:j+3] = papo
-# print(papo2)
-# print(papo2.shape)
-# print(papo2[i,j])
-# x = np.arange(8).reshape(2, 4)
-# idx = (1, 3)
-# print(np.insert(x, idx, 999, axis=1))
-
-# papo = im_func.read_image('monkey.jpg',1)
-# blur = blur_fourier(papo,25)
-# plt.imshow(blur,cmap=plt.cm.gray)
-# plt.show()
-#
-# print('done')
