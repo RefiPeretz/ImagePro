@@ -70,7 +70,8 @@ def calc_matrix(size,exp_shape):
     N = size
     x = np.arange(N)
     u = np.arange(N).reshape(N, 1)
-    return np.exp(-2j * (np.pi * u * x / N)) if exp_shape == 1 else np.exp(2j * (np.pi * u * x / N))
+    return np.exp(-2j * (np.pi * u * x / N)) if exp_shape == 1 \
+        else np.exp(2j * (np.pi * u * x / N))
 
 def DFT(signal):
     """
@@ -127,12 +128,15 @@ def fourier_der(im):
     :return magnitude of an image ( by fourier transform)
     """
     im_DFT = DFT2(im)
+
     N_F, M_F, N_F_MINUS, M_F_MINUS, N , M = floor(im_DFT.shape[1]/2), floor(im_DFT.shape[0]/2), \
                                             floor(-1*(im_DFT.shape[1] / 2)),\
                                             floor(-1*(im_DFT.shape[0] / 2)),\
                                             im_DFT.shape[1], im_DFT.shape[0]
-    u_Y = np.tile(np.concatenate((np.arange(0, M_F, 1), np.arange(M_F_MINUS, 0, 1))).reshape(M, 1), (1, N))
-    u_X = np.tile(np.concatenate((np.arange(0,N_F,1),np.arange(N_F_MINUS,0,1))).reshape(1,N), (M,1))
+    u_Y = np.tile(np.concatenate((np.arange(0, M_F, 1), np.arange(M_F_MINUS, 0, 1)))\
+                  .reshape(M, 1), (1, N))
+    u_X = np.tile(np.concatenate((np.arange(0,N_F,1),np.arange(N_F_MINUS,0,1)))\
+                  .reshape(1,N), (M,1))
 
     derv_X_dft = u_X * im_DFT
     derv_Y_dft =  u_Y * im_DFT
@@ -191,6 +195,7 @@ def blur_fourier(im, kernel_size):
     gaus_kernel_pad[low_x:top_x, low_y:top_y] = gaus_kerenel
 
 
-    gaus_kernel_pad = np.fft.fftshift(gaus_kernel_pad)
+    gaus_kernel_pad = np.fft.ifftshift(gaus_kernel_pad)
     im_DFT, gaus_kerenel_DFT = DFT2(im),  DFT2(gaus_kernel_pad)
     return IDFT2(im_DFT*gaus_kerenel_DFT).real.astype(np.float32)
+
