@@ -11,7 +11,7 @@ def check_float32(var, name):
     else:
         print("dtype is OK")
 
-fname = 'monkey.jpg'
+fname = 'jerusalem.jpg'
 
 ############ TEST 1.1 #############
 x = np.random.rand(1024,1).astype(np.float32)
@@ -59,14 +59,14 @@ sub = fig.add_subplot(121, title='im_org_gray')
 plt.imshow(im_org_gray, cmap=plt.cm.gray)
 
 sub = fig.add_subplot(122, title='im_org_gray_blurring_in_image_space')
-blur0 = sol2.blur_spatial(im_org_gray,9)
+blur0 = sol2.blur_spatial(im_org_gray,25)
 check_float32(blur0, "blur_spatial")
 plt.imshow(blur0, cmap=plt.cm.gray)
 
 
 ############ TEST 3.2 #############
 im_org_gray = sol2.read_image(fname, 1)
-blur1 = sol2.blur_fourier(im_org_gray,9)
+blur1 = sol2.blur_fourier(im_org_gray,25)
 check_float32(blur1, "blur_fourier")
 fig = plt.figure("TEST 3.2")
 sub = fig.add_subplot(121, title='im_org_gray')

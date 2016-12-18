@@ -1,0 +1,8 @@
+While running tests on my ex, I notice that if the gaussain center is not is not in the
+center of the image, we get blured image into 4 pics while the center of this 4 peices is
+in (0,0).
+The cause to this result, is lost of data. The magnitude of shift and non shift image while we doing
+DFT will be the same but when we do a DFT on a non centered image we loost data in the phase.
+So when we multiply the DFT image with the DFT gaussain will get a blur efffect but the OFT will return
+a non centered image compre to the original one.
+
