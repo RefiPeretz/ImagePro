@@ -34,9 +34,15 @@ def build_laplacian_pyramid(im, max_levels, filter_size):
     g_pyr = build_gaussian_pyramid(im,max_levels,filter_size)[0]
     l_pyr = []
     for i in range(len(g_pyr) - 1):
-        l_pyr.append(g_pyr[i] - expand_im(g_pyr[i+1],filter_vec))
+        print(i)
+        l_im = g_pyr[i] - expand_im(g_pyr[i+1],filter_vec)
+        minIm , maxIm = l_im.min(), l_im.max()
+        l_im = (l_im - minIm) / (maxIm - minIm)
+        l_pyr.append(l_im)
 
 
+    plt.imshow(g_pyr[-1], cmap=plt.cm.gray)
+    plt.show()
     l_pyr.append(g_pyr[-1])
     return [l_pyr,filter_vec]
 
@@ -74,12 +80,8 @@ def render_pyramid(pyr, levels):
     print(pyr[0].shape)
     curCol, curRow = 0,0
     for i in range(levels):
-        print(resIm[-1,-1])
         resIm[curRow : pyr[i].shape[0],curCol:pyr[i].shape[1] + curCol] = pyr[i]
         curCol += pyr[i].shape[1]
-        print(resIm[-2,-2])
-        plt.imshow(resIm, cmap=plt.cm.gray)
-        plt.show()
 
     plt.imshow(resIm, cmap=plt.cm.gray)
     plt.show()
@@ -97,9 +99,9 @@ def render_pyramid(pyr, levels):
 
 papo = sol2.read_image('test.jpg',1)
 
-papo , vec = build_laplacian_pyramid(papo,5,3)
+papo , vec = build_laplacian_pyramid(papo,3,3)
 
-render_pyramid(papo,5)
+render_pyramid(papo,3)
 
 
 # def iexpand(image):
