@@ -91,12 +91,13 @@ def display_pyramid(pyr, levels):
 
 
 def laplacian_to_image(lpyr, filter_vec, coeff):
+    #TODO check size
     size_list = len(coeff)
     for i in range(size_list):
         lpyr[i] *= coeff[i]
     print(filter_vec)
 
-    resIm = lpyr[lpyr.__len__()-1]
+    resIm = lpyr[size_list-1]
     for i in range(size_list- 1,0,-1):
         print(i)
         resIm = expand_im(resIm,filter_vec)
@@ -106,6 +107,48 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
 
 
 
+def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mask):
+    l_im1_pyr,filter_vec = build_laplacian_pyramid(im1,max_levels,filter_size_im)
+    l_im2_pyr = build_laplacian_pyramid(im2,max_levels,filter_size_im)[0]
+    g_mask_pyr = build_gaussian_pyramid(mask.astype(np.float32),max_levels,filter_size_mask)[0]
+    #TODO this is the len?
+    l_out = []
+    for i in range(len(l_im1_pyr)):
+        tmp1 = (g_mask_pyr[i]*l_im1_pyr[i])
+        tmp2 = (1 - g_mask_pyr[i])*l_im2_pyr[i]
+        l_out.append(tmp1 + tmp2)
+    #TODO this is the len?
+    return np.clip(laplacian_to_image(l_out,filter_vec,[1]*len(l_im1_pyr)),0,1)
+
+
+def check_line(x,y):
+    if((y-x*1.9) > -675):
+        return True
+    return False
+
+
+def blending_example1():
+    blend1 = sol2.read_image('sea2.jpg', 2)
+    blend2 = sol2.read_image('road.jpg', 2)
+
+    print(blend2.shape)
+    print(blend1.shape)
+    mask = np.zeros((1024, 1024))
+    mask = mask.astype(np.bool)
+    for i in range(639,880):
+        for j in range(1024):
+            mask[i,j] = check_line(i,j)
+
+    # plt.imshow(mask.astype(np.float32), cmap=plt.cm.gray)
+    # plt.show()
+    #mask[825:,:] = False
+    mask_res = np.zeros((1024,1024,3))
+
+    mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 5, 3, 3)
+    mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 5, 3, 3)
+    mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 5, 3, 3)
+
+    return mask_res
 
 
 
@@ -122,19 +165,19 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
 # render_pyramid(papo,5)
 
 papo_im = sol2.read_image('test.jpg',1)
-
-papo , vec = build_laplacian_pyramid(papo_im,4,3)
-
-#display_pyramid(papo,4)
-papo_im2 = laplacian_to_image(papo,vec,[1,1,1,1])
-
-plt.imshow(papo_im2,cmap=plt.cm.gray)
-plt.show()
-
-plt.imshow(papo_im,cmap=plt.cm.gray)
-plt.show()
-
-print(np.all(abs(papo_im - papo_im2) < 10**-12))
+#
+# papo , vec = build_laplacian_pyramid(papo_im,4,3)
+#
+# #display_pyramid(papo,4)
+# papo_im2 = laplacian_to_image(papo,vec,[1,1,1,1])
+#
+# plt.imshow(papo_im2,cmap=plt.cm.gray)
+# plt.show()
+#
+# plt.imshow(papo_im,cmap=plt.cm.gray)
+# plt.show()
+#
+# print(np.all(abs(papo_im - papo_im2) < 10**-12))
 
 # def iexpand(image):
 #   out = None
@@ -145,6 +188,7 @@ print(np.all(abs(papo_im - papo_im2) < 10**-12))
 #   return out
 
 
-# size_list = len(coeff)
-# for i in range(size_list):
-#     lpyr[i] *= coeff[i]
+plt.imshow(blending_example1(), cmap=plt.cm.gray)
+plt.show()
+
+
