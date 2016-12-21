@@ -23,28 +23,22 @@ def gaus_1d(kernel_size):
 def expand_im(im,filter_vec):
     rowSize , colSize = im.shape[0],im.shape[1]
     #zero pad image
-    exp_img = np.zeros((2*rowSize, 2*colSize), dtype=np.float32)
-    exp_img[::2, ::2] = im[:, :]
+    exp_img = np.zeros((2*rowSize, 2*colSize))
+    exp_img[::2, ::2] = im
     exp_img = ndimage.filters.convolve(exp_img, 2 * filter_vec.T)
     return ndimage.filters.convolve(exp_img, 2 * filter_vec)
 
 
 def build_laplacian_pyramid(im, max_levels, filter_size):
-    filter_vec = gaus_1d(filter_size).reshape(1,filter_size)
-    g_pyr = build_gaussian_pyramid(im,max_levels,filter_size)[0]
+    filter_vec = gaus_1d(filter_size).reshape(1, filter_size)
+    g_pyr = build_gaussian_pyramid(im, max_levels, filter_size)[0]
     l_pyr = []
     for i in range(len(g_pyr) - 1):
-        print(i)
-        l_im = g_pyr[i] - expand_im(g_pyr[i+1],filter_vec)
-        minIm , maxIm = l_im.min(), l_im.max()
-        l_im = (l_im - minIm) / (maxIm - minIm)
+        l_im = g_pyr[i] - expand_im(g_pyr[i + 1], filter_vec)
         l_pyr.append(l_im)
 
-
-    plt.imshow(g_pyr[-1], cmap=plt.cm.gray)
-    plt.show()
     l_pyr.append(g_pyr[-1])
-    return [l_pyr,filter_vec]
+    return [l_pyr, filter_vec]
 
 
 
@@ -52,23 +46,27 @@ def build_laplacian_pyramid(im, max_levels, filter_size):
 
 
 def build_gaussian_pyramid(im, max_levels, filter_size):
+    """
+
+    """
+
     #TODO do we need to append original image
     filter_vec = gaus_1d(filter_size).reshape(1,filter_size)
     pyr = []
     pyr.append(im)
-    for i in range(max_levels):
+    for i in range(max_levels - 1):
         #print(im.shape)
         #TODO do we need 'same'?
         #TODO do we need to multiply by 2?
-        im = ndimage.filters.convolve(im, 2*filter_vec.T)
-        im = ndimage.filters.convolve(im, 2*filter_vec)
+        im = ndimage.filters.convolve(im, filter_vec.T)
+        im = ndimage.filters.convolve(im, filter_vec)
         #TODO this is ok method?
         im = im[::2, ::2]
-        minIm , maxIm = im.min(), im.max()
-        im = (im - minIm) / (maxIm - minIm)
         pyr.append(im)
     #TODO (1,filter_size) or (,filter_size)
     return [pyr,filter_vec]
+
+
 
 def render_pyramid(pyr, levels):
     colRes = 0
@@ -76,15 +74,41 @@ def render_pyramid(pyr, levels):
         colRes += pyr[i].shape[1]
     rowRes = pyr[0].shape[0]
     resIm = np.zeros((rowRes,colRes),dtype=np.float32)
-    print(resIm.shape)
-    print(pyr[0].shape)
     curCol, curRow = 0,0
     for i in range(levels):
+        minIm , maxIm = np.min(pyr[i]), np.max(pyr[i])
+        pyr[i] = (pyr[i] - minIm) / (maxIm - minIm)
         resIm[curRow : pyr[i].shape[0],curCol:pyr[i].shape[1] + curCol] = pyr[i]
         curCol += pyr[i].shape[1]
 
-    plt.imshow(resIm, cmap=plt.cm.gray)
+    return resIm
+
+
+
+def display_pyramid(pyr, levels):
+    plt.imshow(render_pyramid(pyr,levels), cmap=plt.cm.gray)
     plt.show()
+
+
+def laplacian_to_image(lpyr, filter_vec, coeff):
+    size_list = len(coeff)
+    for i in range(size_list):
+        lpyr[i] *= coeff[i]
+    print(filter_vec)
+
+    resIm = lpyr[lpyr.__len__()-1]
+    for i in range(size_list- 1,0,-1):
+        print(i)
+        resIm = expand_im(resIm,filter_vec)
+        resIm += lpyr[i-1]
+
+    return resIm
+
+
+
+
+
+
 
 
 # papo = sol2.read_image('test.jpg',1)
@@ -97,12 +121,20 @@ def render_pyramid(pyr, levels):
 # #     plt.show()
 # render_pyramid(papo,5)
 
-papo = sol2.read_image('test.jpg',1)
+papo_im = sol2.read_image('test.jpg',1)
 
-papo , vec = build_laplacian_pyramid(papo,3,3)
+papo , vec = build_laplacian_pyramid(papo_im,4,3)
 
-render_pyramid(papo,3)
+#display_pyramid(papo,4)
+papo_im2 = laplacian_to_image(papo,vec,[1,1,1,1])
 
+plt.imshow(papo_im2,cmap=plt.cm.gray)
+plt.show()
+
+plt.imshow(papo_im,cmap=plt.cm.gray)
+plt.show()
+
+print(np.all(abs(papo_im - papo_im2) < 10**-12))
 
 # def iexpand(image):
 #   out = None
@@ -111,3 +143,8 @@ render_pyramid(papo,3)
 #   outimage[::2,::2]=image[:,:]
 #   out = 4*scipy.signal.convolve2d(outimage,kernel,'same')
 #   return out
+
+
+# size_list = len(coeff)
+# for i in range(size_list):
+#     lpyr[i] *= coeff[i]
