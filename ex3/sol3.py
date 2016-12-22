@@ -121,32 +121,58 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mas
     return np.clip(laplacian_to_image(l_out,filter_vec,[1]*len(l_im1_pyr)),0,1)
 
 
-def check_line(x,y):
+def check_line_right(x,y):
     if((y-x*1.9) > -675):
         return True
     return False
 
+def check_line_left(x,y):
+    if((y+x*1.88) < 1680):
+        return True
+    return False
+
+
 
 def blending_example1():
-    blend1 = sol2.read_image('sea2.jpg', 2)
+    #TODO blend need to be bool?
+    blend1 = sol2.read_image('sea.jpg', 2)
     blend2 = sol2.read_image('road.jpg', 2)
+
+
+
+
 
     print(blend2.shape)
     print(blend1.shape)
     mask = np.zeros((1024, 1024))
     mask = mask.astype(np.bool)
-    for i in range(639,880):
+    for i in range(639,890):
         for j in range(1024):
-            mask[i,j] = check_line(i,j)
+            mask[i,j] = check_line_right(i,j)
+            if(mask[i,j] == 0.0):
+                mask[i, j] = check_line_left(i, j)
 
-    # plt.imshow(mask.astype(np.float32), cmap=plt.cm.gray)
-    # plt.show()
+
+
+    print(mask[849:880,:3])
+
+
+
+    mask[592:639,:500] = True
+    mask[586:639,518:] = True
+
+
+    plt.imshow(mask, cmap=plt.cm.gray)
+    plt.show()
+
+
     #mask[825:,:] = False
     mask_res = np.zeros((1024,1024,3))
 
-    mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 5, 3, 3)
-    mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 5, 3, 3)
-    mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 5, 3, 3)
+    mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 5, 21,7)
+    mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 5, 21, 7)
+    mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 5, 21, 7)
+
 
     return mask_res
 
