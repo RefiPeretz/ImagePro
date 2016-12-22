@@ -137,6 +137,8 @@ def blending_example1():
     #TODO blend need to be bool?
     blend1 = sol2.read_image('sea.jpg', 2)
     blend2 = sol2.read_image('road.jpg', 2)
+    plt.imshow(blend2, cmap=plt.cm.gray)
+    plt.show()
 
 
 
@@ -158,7 +160,7 @@ def blending_example1():
 
 
 
-    mask[592:639,:500] = True
+    mask[592:639,:505] = True
     mask[586:639,518:] = True
 
 
