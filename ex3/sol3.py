@@ -1,4 +1,5 @@
 import sol2
+import sol1
 import numpy as np
 from scipy.signal import convolve2d, convolve
 from scipy import ndimage
@@ -6,6 +7,7 @@ from scipy.misc import imread as imread
 from skimage.color import rgb2gray
 from math import floor
 import matplotlib.pyplot as plt
+import os
 
 def gaus_1d(kernel_size):
     """
@@ -21,6 +23,14 @@ def gaus_1d(kernel_size):
     return gaus_kernel
 
 def expand_im(im,filter_vec):
+    """
+    Expand image in a power of two. First zeropad
+    and than blur
+    :param im: Image to expand
+    :param filter_vec: The vector which represent the
+    filter we want
+    :return expand image
+    """
     rowSize , colSize = im.shape[0],im.shape[1]
     #zero pad image
     exp_img = np.zeros((2*rowSize, 2*colSize))
@@ -30,6 +40,15 @@ def expand_im(im,filter_vec):
 
 
 def build_laplacian_pyramid(im, max_levels, filter_size):
+    """
+    Build laplacian pyramid. with max_levels levels using
+    filter_vec as blur filter
+    :param im: Image for the pyramid
+    :param max_levels: Max levels of the pyramid
+    :param filter_vec: The vector which represent the
+    filter we want
+    :return laplacian pyramid
+    """
     filter_vec = gaus_1d(filter_size).reshape(1, filter_size)
     g_pyr = build_gaussian_pyramid(im, max_levels, filter_size)[0]
     l_pyr = []
@@ -47,15 +66,22 @@ def build_laplacian_pyramid(im, max_levels, filter_size):
 
 def build_gaussian_pyramid(im, max_levels, filter_size):
     """
-
+    Build gaussain pyramid. with max_levels levels using
+    filter_vec as blur filter
+    :param im: Image for the pyramid
+    :param max_levels: Max levels of the pyramid
+    :param filter_vec: The vector which represent the
+    filter we want
+    :return gaussain pyramid
     """
 
-    #TODO do we need to append original image
     filter_vec = gaus_1d(filter_size).reshape(1,filter_size)
     pyr = []
     pyr.append(im)
     for i in range(max_levels - 1):
-        #print(im.shape)
+        print(im.shape)
+        if(im.shape[0] < 16 or im.shape[1] < 16):
+            break
         #TODO do we need 'same'?
         #TODO do we need to multiply by 2?
         im = ndimage.filters.convolve(im, filter_vec.T)
@@ -69,6 +95,14 @@ def build_gaussian_pyramid(im, max_levels, filter_size):
 
 
 def render_pyramid(pyr, levels):
+    """
+    Render the pyramid image.Create a black
+    canvans and locate the pyr images on it.
+    :param pyr: Pyramid to render
+    :param levels: Max levels of the pyramid
+    :return resIm all the pyramid images displayed on
+    a big black canvas.
+    """
     colRes = 0
     for i in range(levels):
         colRes += pyr[i].shape[1]
@@ -86,20 +120,32 @@ def render_pyramid(pyr, levels):
 
 
 def display_pyramid(pyr, levels):
+    """
+    Display rendered pyramid
+    :param pyr: Pyramid to display
+    :param levels: Max levels of the pyramid
+    """
     plt.imshow(render_pyramid(pyr,levels), cmap=plt.cm.gray)
     plt.show()
 
 
 def laplacian_to_image(lpyr, filter_vec, coeff):
+    """
+    Recreate image form its laplacian image
+    :param lpyr: Pyramid of the image
+    :param filter_vec: The vector which represent the
+    filter we used to create the pyramid image.
+    :param coeff: List of constant for every
+    level of the pyramid.
+    :return The image we restored.
+    """
     #TODO check size
     size_list = len(coeff)
     for i in range(size_list):
         lpyr[i] *= coeff[i]
-    print(filter_vec)
 
     resIm = lpyr[size_list-1]
     for i in range(size_list- 1,0,-1):
-        print(i)
         resIm = expand_im(resIm,filter_vec)
         resIm += lpyr[i-1]
 
@@ -108,6 +154,18 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
 
 
 def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mask):
+    """
+    Blend to images using a given mask
+    :param im1: Image to blend
+    :param im2: Image to blend
+    :param mask: Mask we use in the blending process
+    :param max_levels: Max levels of the pyramid
+    :param filter_size_im: The vector which represent the
+    filter we want for image
+    :param filter_size_mask: The vector which represent the
+    filter we want for mask
+    :return Blended image.
+    """
     l_im1_pyr,filter_vec = build_laplacian_pyramid(im1,max_levels,filter_size_im)
     l_im2_pyr = build_laplacian_pyramid(im2,max_levels,filter_size_im)[0]
     g_mask_pyr = build_gaussian_pyramid(mask.astype(np.float32),max_levels,filter_size_mask)[0]
@@ -118,65 +176,130 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mas
         tmp2 = (1 - g_mask_pyr[i])*l_im2_pyr[i]
         l_out.append(tmp1 + tmp2)
     #TODO this is the len?
+    #TODO which coeff we need to send?
     return np.clip(laplacian_to_image(l_out,filter_vec,[1]*len(l_im1_pyr)),0,1)
 
 
-def check_line_right(x,y):
-    if((y-x*1.9) > -675):
-        return True
-    return False
+# def check_line_right(x,y):
+#     if((y-x*1.9) > -675):
+#         return True
+#     return False
+#
+# def check_line_left(x,y):
+#     if((y+x*1.88) < 1720):
+#         return True
+#     return False
+#
 
-def check_line_left(x,y):
-    if((y+x*1.88) < 1680):
-        return True
-    return False
-
-
+def relpath(filename):
+    return os.path.join(os.path.dirname(__file__), filename)
 
 def blending_example1():
+    """
+    Blending example 1.
+    """
     #TODO blend need to be bool?
-    blend1 = sol2.read_image('sea.jpg', 2)
-    blend2 = sol2.read_image('road.jpg', 2)
-    plt.imshow(blend2, cmap=plt.cm.gray)
-    plt.show()
+    # blend1 = sol2.read_image('kids.jpg', 2)
+    # blend2 = sol2.read_image('lava2_fix.jpg', 2)
+    # mask = sol2.read_image('kids_fix.jpg', 1)
+    blend2 = sol2.read_image(relpath('externals/sea_examp.jpg'), 2)
+    blend1 = sol2.read_image(relpath('externals/road_examp.jpg'), 2)
+    mask = sol2.read_image(relpath('road_paint.jpg'), 1)
+    mask[mask > 0.0095] = 1
+    mask[mask <= 0.0095] = 0
 
-
-
-
-
-    print(blend2.shape)
-    print(blend1.shape)
-    mask = np.zeros((1024, 1024))
-    mask = mask.astype(np.bool)
-    for i in range(639,890):
-        for j in range(1024):
-            mask[i,j] = check_line_right(i,j)
-            if(mask[i,j] == 0.0):
-                mask[i, j] = check_line_left(i, j)
-
-
-
-    print(mask[849:880,:3])
-
-
-
-    mask[592:639,:505] = True
-    mask[586:639,518:] = True
-
-
+    fig = plt.figure("Blending example2")
+    fig.add_subplot(221, title="Im1")
+    plt.imshow(blend1)
+    fig.add_subplot(222, title="Im2")
+    plt.imshow(blend2)
+    fig.add_subplot(223, title="Mask")
     plt.imshow(mask, cmap=plt.cm.gray)
-    plt.show()
-
 
     #mask[825:,:] = False
     mask_res = np.zeros((1024,1024,3))
 
-    mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 5, 21,7)
-    mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 5, 21, 7)
-    mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 5, 21, 7)
+    mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 6, 11, 7)
+    mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 6, 11, 7)
+    mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 6, 11, 7)
+
+    fig.add_subplot(224)
+    plt.imshow(mask_res)
+
+    return [blend1, blend2, mask, mask_res]
+
+def blending_example2():
+    """
+    Blending example 2.
+    """
+    #TODO blend need to be bool?
+    # blend1 = sol2.read_image('kids.jpg', 2)
+    # blend2 = sol2.read_image('lava2_fix.jpg', 2)
+    # mask = sol2.read_image('kids_fix.jpg', 1)
+    blend2 = sol2.read_image(relpath('externals/lighting_examp.jpg'), 2)
+    blend1 = sol2.read_image(relpath('externals/eye_examp.jpg'), 2)
+    mask = sol2.read_image(relpath('eye_mask.jpg'), 1)
+    mask[mask > 0.0095] = 1
+    mask[mask <= 0.0095] = 0
+
+    fig = plt.figure("Blending example2")
+    fig.add_subplot(221, title="Im1")
+    plt.imshow(blend1)
+    fig.add_subplot(222, title="Im2")
+    plt.imshow(blend2)
+    fig.add_subplot(223, title="Mask")
+    plt.imshow(mask, cmap=plt.cm.gray)
+
+    mask_res = np.zeros((1024,1024,3))
+
+    mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 8, 7,3)
+    mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 8, 7, 3)
+    mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 8, 7, 3)
+
+    fig.add_subplot(224)
+    plt.imshow(mask_res)
+
+    return [blend1, blend2, mask, mask_res]
 
 
-    return mask_res
+
+# def blending_example1():
+#     #TODO blend need to be bool?
+#     blend1 = sol2.read_image('sea_refi.jpg', 2)
+#     blend2 = sol2.read_image('road_tmp.jpg', 2)
+#     plt.imshow(blend2, cmap=plt.cm.gray)
+#     plt.show()
+#
+#
+#
+#     mask = np.zeros((1024, 1024))
+#     mask = mask.astype(np.bool)
+#     for i in range(628,895):
+#         for j in range(1024):
+#             mask[i,j] = check_line_right(i,j)
+#             if(mask[i,j] == 0.0):
+#                 mask[i, j] = check_line_left(i, j)
+#
+#
+#
+#
+#
+#
+#
+#     mask[592:639,:505] = True
+#     mask[586:639,518:] = True
+#
+#
+#
+#
+#     #mask[825:,:] = False
+#     mask_res = np.zeros((1024,1024,3))
+#
+#     mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 5, 21,81)
+#     mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 5, 21, 81)
+#     mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 5, 21, 81)
+#
+#     return [blend1,blend2,mask,mask_res]
 
 
 
@@ -216,7 +339,9 @@ papo_im = sol2.read_image('test.jpg',1)
 #   return out
 
 
-plt.imshow(blending_example1(), cmap=plt.cm.gray)
+blending_example1()
+plt.show()
+blending_example2()
 plt.show()
 
 
