@@ -1,13 +1,67 @@
-import sol2
-import sol1
 import numpy as np
 from scipy.signal import convolve2d, convolve
 from scipy import ndimage
-from scipy.misc import imread as imread
+from scipy.misc import imread,imsave
 from skimage.color import rgb2gray
 from math import floor
 import matplotlib.pyplot as plt
 import os
+
+
+
+def normlized_image(image):
+    """
+    Normlize image to float 32 and [0,1]
+    :param image: Reprentaion of display 1 for grayscale 2 for RGB
+    :return normlized image
+    """
+    if(image.dtype != np.float32):
+        image = image.astype(np.float32)
+    if(image.max() > 1):
+        image /= 255
+
+    return image
+
+
+def is_rgb(im):
+    """
+    Verify if an image is RGB
+    :param im: Reprentaion of display 1 for grayscale 2 for RGB
+    """
+    if(im.ndim == 3):
+        return True
+    else:
+        return False
+
+
+def validate_representation(representation):
+    """
+    Validate reprentaion input
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    """
+
+    if representation != 1 and representation != 2:
+        raise Exception("Unkonwn representaion")
+
+#TODO remove read_image
+def read_image(fileame, representation):
+    """
+    Read image by file name and normlize it to float 32 [0,1] representaion
+    according to RGB or Graysacle
+    :param filename: The name of the file that we should read.
+    :param representation: Reprentaion of display 1 for grayscale 2 for RGB
+    :return normlized image
+    """
+    validate_representation(representation)
+
+    im = imread(fileame)
+    if representation == 1 and is_rgb(im):
+        # We should convert from Grayscale to RGB
+        im =rgb2gray(im)
+        return im.astype(np.float32)
+
+    return normlized_image(im)
+
 
 def gaus_1d(kernel_size):
     """
@@ -33,7 +87,7 @@ def expand_im(im,filter_vec):
     """
     rowSize , colSize = im.shape[0],im.shape[1]
     #zero pad image
-    exp_img = np.zeros((2*rowSize, 2*colSize))
+    exp_img = np.zeros((2*rowSize, 2*colSize), dtype=np.float32)
     exp_img[::2, ::2] = im
     exp_img = ndimage.filters.convolve(exp_img, 2 * filter_vec.T)
     return ndimage.filters.convolve(exp_img, 2 * filter_vec)
@@ -79,8 +133,7 @@ def build_gaussian_pyramid(im, max_levels, filter_size):
     pyr = []
     pyr.append(im)
     for i in range(max_levels - 1):
-        print(im.shape)
-        if(im.shape[0] < 16 or im.shape[1] < 16):
+        if(im.shape[0] <= 16 or im.shape[1] <= 16):
             break
         #TODO do we need 'same'?
         #TODO do we need to multiply by 2?
@@ -103,6 +156,8 @@ def render_pyramid(pyr, levels):
     :return resIm all the pyramid images displayed on
     a big black canvas.
     """
+    if len(pyr) < levels:
+        levels = len(pyr)
     colRes = 0
     for i in range(levels):
         colRes += pyr[i].shape[1]
@@ -140,7 +195,7 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
     :return The image we restored.
     """
     #TODO check size
-    size_list = len(coeff)
+    size_list = len(lpyr)
     for i in range(size_list):
         lpyr[i] *= coeff[i]
 
@@ -148,6 +203,7 @@ def laplacian_to_image(lpyr, filter_vec, coeff):
     for i in range(size_list- 1,0,-1):
         resIm = expand_im(resIm,filter_vec)
         resIm += lpyr[i-1]
+
 
     return resIm
 
@@ -180,18 +236,15 @@ def pyramid_blending(im1, im2, mask, max_levels, filter_size_im, filter_size_mas
     return np.clip(laplacian_to_image(l_out,filter_vec,[1]*len(l_im1_pyr)),0,1)
 
 
-# def check_line_right(x,y):
-#     if((y-x*1.9) > -675):
-#         return True
-#     return False
-#
-# def check_line_left(x,y):
-#     if((y+x*1.88) < 1720):
-#         return True
-#     return False
-#
+
 
 def relpath(filename):
+    """
+     Calculates the real path of an image
+     :param filename: The file name path
+     :return Real path of the file.
+     """
+
     return os.path.join(os.path.dirname(__file__), filename)
 
 def blending_example1():
@@ -202,13 +255,16 @@ def blending_example1():
     # blend1 = sol2.read_image('kids.jpg', 2)
     # blend2 = sol2.read_image('lava2_fix.jpg', 2)
     # mask = sol2.read_image('kids_fix.jpg', 1)
-    blend2 = sol2.read_image(relpath('externals/sea_examp.jpg'), 2)
-    blend1 = sol2.read_image(relpath('externals/road_examp.jpg'), 2)
-    mask = sol2.read_image(relpath('road_paint.jpg'), 1)
+    blend2 = read_image(relpath('./externals_example/sea_examp.jpg'), 2)
+    blend1 = read_image(relpath('./externals_example/road_examp.jpg'), 2)
+    mask = read_image(relpath('./externals_example/road_mask_im.jpg'), 1)
+    #TODO save it as an image
     mask[mask > 0.0095] = 1
     mask[mask <= 0.0095] = 0
+    mask = mask.astype(np.bool)
 
-    fig = plt.figure("Blending example2")
+
+    fig = plt.figure("Blending example1")
     fig.add_subplot(221, title="Im1")
     plt.imshow(blend1)
     fig.add_subplot(222, title="Im2")
@@ -217,7 +273,7 @@ def blending_example1():
     plt.imshow(mask, cmap=plt.cm.gray)
 
     #mask[825:,:] = False
-    mask_res = np.zeros((1024,1024,3))
+    mask_res = np.zeros((1024,1024,3), dtype=np.float32)
 
     mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 6, 11, 7)
     mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 6, 11, 7)
@@ -236,11 +292,14 @@ def blending_example2():
     # blend1 = sol2.read_image('kids.jpg', 2)
     # blend2 = sol2.read_image('lava2_fix.jpg', 2)
     # mask = sol2.read_image('kids_fix.jpg', 1)
-    blend2 = sol2.read_image(relpath('externals/lighting_examp.jpg'), 2)
-    blend1 = sol2.read_image(relpath('externals/eye_examp.jpg'), 2)
-    mask = sol2.read_image(relpath('eye_mask.jpg'), 1)
+    blend2 = read_image(relpath('externals_example/lighting_examp.jpg'), 2)
+    blend1 = read_image(relpath('externals_example/eye_examp.jpg'), 2)
+    mask = read_image(relpath('externals_example/eye_mask_im.jpg'), 1)
+    #TODO save it as an image
     mask[mask > 0.0095] = 1
     mask[mask <= 0.0095] = 0
+    mask = mask.astype(np.bool)
+
 
     fig = plt.figure("Blending example2")
     fig.add_subplot(221, title="Im1")
@@ -250,7 +309,7 @@ def blending_example2():
     fig.add_subplot(223, title="Mask")
     plt.imshow(mask, cmap=plt.cm.gray)
 
-    mask_res = np.zeros((1024,1024,3))
+    mask_res = np.zeros((1024, 1024, 3), dtype=np.float32)
 
     mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 8, 7,3)
     mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 8, 7, 3)
@@ -260,88 +319,4 @@ def blending_example2():
     plt.imshow(mask_res)
 
     return [blend1, blend2, mask, mask_res]
-
-
-
-# def blending_example1():
-#     #TODO blend need to be bool?
-#     blend1 = sol2.read_image('sea_refi.jpg', 2)
-#     blend2 = sol2.read_image('road_tmp.jpg', 2)
-#     plt.imshow(blend2, cmap=plt.cm.gray)
-#     plt.show()
-#
-#
-#
-#     mask = np.zeros((1024, 1024))
-#     mask = mask.astype(np.bool)
-#     for i in range(628,895):
-#         for j in range(1024):
-#             mask[i,j] = check_line_right(i,j)
-#             if(mask[i,j] == 0.0):
-#                 mask[i, j] = check_line_left(i, j)
-#
-#
-#
-#
-#
-#
-#
-#     mask[592:639,:505] = True
-#     mask[586:639,518:] = True
-#
-#
-#
-#
-#     #mask[825:,:] = False
-#     mask_res = np.zeros((1024,1024,3))
-#
-#     mask_res[:,:,0] = pyramid_blending(blend1[:,:,0], blend2[:,:,0], mask, 5, 21,81)
-#     mask_res[:,:,1] = pyramid_blending(blend1[:,:,1], blend2[:,:,1], mask, 5, 21, 81)
-#     mask_res[:,:,2] = pyramid_blending(blend1[:,:,2], blend2[:,:,2], mask, 5, 21, 81)
-#
-#     return [blend1,blend2,mask,mask_res]
-
-
-
-
-
-# papo = sol2.read_image('test.jpg',1)
-#
-# papo , vec = build_gaussian_pyramid(papo,5,3)
-#
-# # for i in range(5):
-# #     print(papo[i].shape)
-# #     plt.imshow(papo[i], cmap=plt.cm.gray)
-# #     plt.show()
-# render_pyramid(papo,5)
-
-papo_im = sol2.read_image('test.jpg',1)
-#
-# papo , vec = build_laplacian_pyramid(papo_im,4,3)
-#
-# #display_pyramid(papo,4)
-# papo_im2 = laplacian_to_image(papo,vec,[1,1,1,1])
-#
-# plt.imshow(papo_im2,cmap=plt.cm.gray)
-# plt.show()
-#
-# plt.imshow(papo_im,cmap=plt.cm.gray)
-# plt.show()
-#
-# print(np.all(abs(papo_im - papo_im2) < 10**-12))
-
-# def iexpand(image):
-#   out = None
-#   kernel = generating_kernel(0.4)
-#   outimage = np.zeros((image.shape[0]*2, image.shape[1]*2), dtype=np.float64)
-#   outimage[::2,::2]=image[:,:]
-#   out = 4*scipy.signal.convolve2d(outimage,kernel,'same')
-#   return out
-
-
-blending_example1()
-plt.show()
-blending_example2()
-plt.show()
-
 

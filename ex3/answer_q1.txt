@@ -1,0 +1,4 @@
+As we learn the fourier derivative is accurate up to a constant while
+the convolution with [1, 0, -1] is more close to approximation which
+means we lose data compre to the fourier derivative
+
