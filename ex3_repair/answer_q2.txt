@@ -1,0 +1,9 @@
+Small fillter size will keep edges but will effect the blending that we like poorly.
+That make sence since we preserve high freq. 
+
+A small filter size also means small windows which means small smoothness.
+
+On the other hand using big filter size will result the oppsite we will hurt the
+edges and blend them. But the blending effect will look more nice.
+The reason is the size of the window which is bigh window
+in convolution result in good smoothing.

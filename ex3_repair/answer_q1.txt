@@ -1,0 +1,8 @@
+Multiply by different coefficients wukk cause different type of filters which we
+use in the reconstruction process. If we will multiply the last level of the pyr
+with a value of 0 we will get a low pass filtering. The reason is that the last level
+holds the lowest frequencies of the image.
+
+Multiplying the middle with 0 will result a band stio freq image and the first level will
+result with high freq for the same reaons discribe above.
+so by manuplating the coefficients we can result filtering as we disire.

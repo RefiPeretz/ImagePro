@@ -1,0 +1,9 @@
+Question:
+    Why did you get two different magnitude images?
+
+Answer:
+    The difference is due to the fact that the convolution derivative (1, 0 ,-1) is an
+    approximation of the derivative of the image. Thus we lose data! The derivative
+    in the Fourier domain on the other hand is accurate, because we used a closed form formula that
+    is mathematically accurate, and is not an approximation. We do not lose data, and for
+    that reason the difference between the results.

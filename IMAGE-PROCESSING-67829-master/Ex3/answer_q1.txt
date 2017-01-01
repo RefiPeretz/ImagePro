@@ -1,0 +1,13 @@
+Question:
+    What does it mean to multiply each level in a different value? What do we try to control on?
+
+Answer:
+    Multiplying the different levels with different values of coefficients will result in different types of
+    filtering on the reconstructed image. Multiplying the last level of the pyramid with 0 will result low pass
+    filtering on the image (because the last level holds the lowest frequencies of the image).
+    Multiplying the first level of the pyramid will result in a high pass filtering on the image (because this
+    level holds the high frequencies of the image).
+    Multiplying the middle level with 0's will result in band stopping the frequencies that were present
+    on these levels (they hold the band frequencies). Doing this all together will result in a combined filter.
+    Of course one can multiply with something else than 0 or 1 and receive filtering to he's\she's satisfaction,
+    and even to enhance some frequencies - bigger than 1.

@@ -1,0 +1,6 @@
+The number of pyr levels which we use in the blendig will affect the smoothness
+effect of the blending and determine weather or not it seem natural.
+As we go higher we will gain more tailored image.
+This is result from a low pass filtering in any level that we reconstruct.
+This also come with a price of less edgy edges.
+

@@ -1,0 +1,10 @@
+Question:
+    What is the difference between the two results (Blurring in image space and blurring in Fourier space)?
+
+Answer:
+    In the Fourier space we have a point wise multiplication between two same size images, thus
+    we are not facing any border problems.
+    In the spacial space, the convolution in the edges of the image require us to decide the method of
+    compensation of the lack of information in the edges - we can duplicate the last row, warping around the
+    image or padding with zero. Anyways, this is an non 'natural' addition that we force in the blurring operation,
+    an addition we dont need to do in the fourier domain.

@@ -1,0 +1,4 @@
+Question:
+    What does it mean to multiply each level in a different value? What do we try to control on?
+
+Answer:
