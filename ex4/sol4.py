@@ -3,6 +3,8 @@ import sol4_add as add
 import numpy as np
 from scipy.ndimage import map_coordinates
 import matplotlib.pyplot as plt
+from itertools import *
+import heapq
 
 def calculate_matrix(im):
     der_x_im, der_y_im = util.conv_der(im)
@@ -44,7 +46,8 @@ def sample_descriptor(im, pos, desc_rad):
         res_patch = map_coordinates(im,calculate_patch(reduce_factor*cor,K,desc_rad),order=1).reshape(K,K)
         #TODO normlize check if done correct?
         res_patch = (res_patch - np.mean(res_patch)) / (np.linalg.norm(res_patch -  np.mean(res_patch)))
-        desc_list.append(res_patch)
+        if(np.isnan(res_patch)[0][0] != True):
+            desc_list.append(res_patch)
     return np.dstack(desc_list)
 
 def find_featuers(pyr):
@@ -53,10 +56,33 @@ def find_featuers(pyr):
     return sample_descriptor(pyr[2],pos,3)
 
 
+def calculate_desc_matrix(desc1,desc2):
+    return np.dot(np.transpose(desc1.reshape((desc1.shape[0] * desc1.shape[1], desc1.shape[2]))),\
+                  desc2.reshape((desc2.shape[0] * desc2.shape[1], desc2.shape[2])))
 
 
-im = util.read_image("external/oxford1.jpg",1)
-find_featuers(util.build_gaussian_pyramid(im,3,3)[0])
+
+def match_features(desc1,desc2,min_score):
+
+    score_matrix = calculate_desc_matrix(desc1,desc2)
+    print(score_matrix.shape)
+    max_values_desc1 = np.partition(score_matrix,score_matrix.shape[0] - 2,axis=0)[:][-2]
+
+
+
+
+
+
+
+    return None
+
+
+
+im1 = util.read_image("external/oxford1.jpg",1)
+im2 = util.read_image("external/oxford2.jpg",1)
+desc1 = find_featuers(util.build_gaussian_pyramid(im1,3,3)[0])
+desc2 = find_featuers(util.build_gaussian_pyramid(im2,3,3)[0])
+match_features(desc1,desc2,0.5)
 # papo = add.spread_out_corners(im,7,7,7)
 # #papo = harris_corner_detector(im)
 # plt.imshow(im, cmap=plt.cm.gray)
