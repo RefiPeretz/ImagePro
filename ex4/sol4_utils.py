@@ -211,14 +211,43 @@ def gaus_2d(kernel_size):
     d1_kernel = gaus_1d(kernel_size).reshape(1,kernel_size)
     return convolve2d(d1_kernel, d1_kernel.T, mode='full').astype(np.float32)
 
+def d1_gaus(kernel_size):
+    """
+    creates a line vector of length "kernel_size" filled with binomial
+    coefficients, by convolving [1,1] with itself.
+    """
+
+    if (kernel_size == 1):
+        return np.ones(shape=(1,1))
+
+    conv_mat = np.float64(np.array([1, 1]))
+    partial_kernel = conv_mat
+
+    for i in range(kernel_size - 2):
+        partial_kernel = convolve \
+            (partial_kernel, conv_mat, mode='full')
+
+    return (partial_kernel/np.sum(partial_kernel)) \
+                                    .reshape(1, kernel_size)
+
 def blur_spatial(im, kernel_size):
     """
-    Blur image in spatial using convolution with
-     a given size gaus kernel
-    :param im, image to blur
-    :param kernel_size: size of the kernel we want.
-    :return blur image.
+    Blurs the image using a gaussian kernel which was created as  matrix
+    filled with binomial coefficients.
     """
-    gaus_kerenel = gaus_2d(kernel_size)
-    gaus_kerenel /= np.sum(gaus_kerenel)
-    return convolve2d(im, gaus_kerenel, mode='same', boundary='wrap')
+    # if(kernel_size == 1):
+    #     return im
+
+    gaus_ker = d1_gaus(kernel_size)
+
+    # kernel = signal.convolve2d(partial_kernel.reshape(1, kernel_size), \
+    #                            partial_kernel.reshape(1, kernel_size).T, \
+    #                            mode="full").astype(np.float64)
+
+    # kernel = kernel / (np.sum(kernel))
+    # im = signal.convolve2d(im, kernel, mode='same', boundary='wrap')
+
+    im = ndimage.filters.convolve(im, gaus_ker)
+    im = ndimage.filters.convolve(im, gaus_ker.reshape(kernel_size, 1))
+
+    return np.float32(im)
