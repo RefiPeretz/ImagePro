@@ -80,4 +80,3 @@ def spread_out_corners(im, m, n, radius):
   legit = ((corners[:,0]>radius) & (corners[:,0]<im.shape[1]-radius) & 
            (corners[:,1]>radius) & (corners[:,1]<im.shape[0]-radius))
   return corners[legit,:]
-

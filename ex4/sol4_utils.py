@@ -3,6 +3,7 @@ from scipy.signal import convolve2d, convolve
 from scipy import ndimage
 from scipy.misc import imread,imsave
 from skimage.color import rgb2gray
+from scipy.ndimage.filters import convolve as con_new
 from math import floor
 import matplotlib.pyplot as plt
 import os
@@ -14,8 +15,9 @@ def conv_der(im):
     :param image:
     :return magnitude of an image
     """
-    derv_X = convolve2d(im, np.array([1, 0, -1]).reshape(1,3), mode="same")
-    drev_Y = convolve2d(im, np.array([[1], [0], [-1]]).reshape(3,1), mode="same")
+    filter_vec = (np.array([-1, 0, 1])).reshape(1, 3)
+    derv_X = con_new(im,filter_vec)
+    drev_Y = con_new(im, filter_vec.T)
     return derv_X, drev_Y
 
 

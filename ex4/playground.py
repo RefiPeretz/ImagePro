@@ -1,5 +1,4 @@
 import sol4
-import sol4_od
 import sol4_utils
 import sol4_add
 import numpy as np
@@ -66,10 +65,14 @@ ransac1 = sol4.ransac_homography(Img_2_2_matched_indexes, Img_3_matched_indexes,
 sol4.display_matches(Img_2, Img_3, Img_2_2_matched_indexes, Img_3_matched_indexes, ransac1[1])
 
 ### TEST 4.0 ###
-H2m = sol4.accumulate_homographies([ransac0[0], ransac1[0]], 1)
-H2m1 = sol4_od.accumulate_homographies([ransac0[0], ransac1[0]], 1)
-print(np.allclose(H2m[:],H2m1[:]))
-panorama_pic = sol4.render_panorama([Img_1, Img_2, Img_3], H2m1)
+# H2m = sol4.accumulate_homographies([ransac0[0], ransac1[0]], 1)
+# panorama_pic = sol4.render_panorama([Img_1, Img_2, Img_3], H2m)
+# fig = plt.figure("TEST 4 - Panorama")
+# plt.imshow(panorama_pic, cmap=plt.cm.gray)
+
+oxford1 = sol4_utils.read_image("external/oxford1.jpg", REPRESENTATION_GRAYSCALE)
+oxford2 = sol4_utils.read_image("external/oxford2.jpg", REPRESENTATION_GRAYSCALE)
+
 
 
 plt.show()

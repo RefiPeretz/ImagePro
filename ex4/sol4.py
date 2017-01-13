@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 #TODO delete
 import sol4_od
 from functools import reduce
+from scipy.ndimage.filters import convolve as convolve
 
 
 
@@ -17,22 +18,41 @@ def calculate_matrix(im):
     matrix_4 = util.blur_spatial(der_y_im * der_y_im, 3)
     return matrix_1,matrix_2,matrix_3,matrix_4
 
-
-
-
 def harris_corner_detector(im):
     matrix_1,matrix_2,matrix_3,matrix_4 = calculate_matrix(im)
     k = 0.04
     tmp1 = (matrix_1*matrix_4 - matrix_2*matrix_3)
     tmp2 = k*((matrix_1 + matrix_4)**2)
     R = tmp1 - tmp2
-    res_r = add.non_maximum_suppression(R)
-    non_zero_index = np.argwhere(res_r == 1)
-    tmp1 = np.copy(non_zero_index[:,0])
-    tmp2 = np.copy(non_zero_index[:, 1])
-    non_zero_index[:,0] = tmp2
-    non_zero_index[:,1] = tmp1
-    return non_zero_index
+    R = R.T
+    #TODO maybe change
+    res_r = np.dstack(np.where(add.non_maximum_suppression(R)))
+    return res_r.reshape(res_r.shape[1], 2)
+
+#TODO delete
+# def harris_corner_detector1(im):
+#     matrix_1,matrix_2,matrix_3,matrix_4 = calculate_matrix(im)
+#     k = 0.04
+#     M = np.dstack((matrix_1, matrix_2, matrix_2, matrix_4))
+#     M = M.reshape(M.shape[0], M.shape[1], 2, 2)
+#     R = np.linalg.det(M[:, :]) - k * (np.trace(M, axis1=2, axis2=3) ** 2)
+#     ret = np.dstack(np.where(add.non_maximum_suppression(R.transpose())))
+#     return ret.reshape(ret.shape[1], 2)
+#
+#TODO delete
+# def harris_corner_detector1(im):
+#     div = (np.array([-1, 0, 1])).reshape(1, 3)
+#     Ix = convolve(im, div)
+#     Iy = convolve(im, np.transpose(div))
+#     IxIx = util.blur_spatial(Ix * Ix, 3)
+#     IxIy = util.blur_spatial(Ix * Iy, 3)
+#     IyIy = util.blur_spatial(Iy * Iy, 3)
+#     k = 0.04
+#     M = np.dstack((IxIx, IxIy, IxIy, IyIy))
+#     M = M.reshape(M.shape[0], M.shape[1], 2, 2)
+#     R = np.linalg.det(M[:, :]) - k * (np.trace(M, axis1=2, axis2=3) ** 2)
+#     ret = np.dstack(np.where(add.non_maximum_suppression(R.transpose())))
+#     return ret.reshape(ret.shape[1], 2)
 
 def calculate_patch(cor,K,border):
     x,y = cor[0],cor[1]
@@ -124,7 +144,6 @@ def apply_homography(pos1, H12):
     res_mat = (res_mat / res_mat[-1:,]).T
     return (res_mat[:,:-1]).round()
 
-
 def ransac_homography(pos1,pos2,num_iters,inlier_tol):
     max_inliers = 0
     final_inliers_set = None
@@ -164,28 +183,28 @@ def display_matches(im1,im2,pos1,pos2,inliers):
     plt.show()
 
 
-
-def accumulate_homographies(H_successive,m):
-    #TODO change
-    H2m = []
-    for i in range(len(H_successive) + 1):
-        res_matrix = np.ones((3,3))
-        if i > m:
-            for j in range(m, i):
-                res_matrix *= np.linalg.inv(H_successive[j])
-        elif i < m:
-
-            for j in range(m - 1, i - 1, -1):
-                res_matrix *= H_successive[j]
-        else:
-            res_matrix = np.eye(3)
-        res_matrix /= res_matrix[2, 2]
-        H2m.append(res_matrix)
-
-    return H2m
-
-
-def render_panorama(ims,H):
+#
+# def accumulate_homographies(H_successive,m):
+#     #TODO change
+#     H2m = []
+#     for i in range(len(H_successive) + 1):
+#         res_matrix = np.ones((3,3))
+#         if i > m:
+#             for j in range(m, i):
+#                 res_matrix *= np.linalg.inv(H_successive[j])
+#         elif i < m:
+#
+#             for j in range(m - 1, i - 1, -1):
+#                 res_matrix *= H_successive[j]
+#         else:
+#             res_matrix = np.eye(3)
+#         res_matrix /= res_matrix[2, 2]
+#         H2m.append(res_matrix)
+#
+#     return H2m
+#
+#
+def render_panorama1(ims,H):
     #max_x,max_y,min_x,min_y = [],[],[],[]
     x_val,y_val = [],[]
     centers_ims = []
@@ -207,6 +226,91 @@ def render_panorama(ims,H):
 
 
     pan = np.zeros((x_max - x_min + 1 , y_max - y_min + 1))
+#
+#
+
+
+def accumulate_homographies(H_successive,m):
+    #TODO change
+    H2m = []
+    for i in range(len(H_successive) + 1):
+        res_matrix = np.eye(3)
+        if i > m:
+            for j in range(m, i):
+                res_matrix = res_matrix.dot(np.linalg.inv(H_successive[j]))
+        elif i < m:
+
+            for j in range(m - 1, i - 1, -1):
+                res_matrix = res_matrix.dot(H_successive[j])
+        else:
+            res_matrix = np.eye(3)
+        res_matrix /= res_matrix[2, 2]
+        H2m.append(res_matrix)
+
+    return H2m
+
+def accumulate_homographies1(H_successive, m):
+    """
+    Calculates cumulative homographies matrices.
+    :param H_successive: A list of M−1 3x3 homography matrices where H_successive[i] is a homography
+                         that transforms points from coordinate system i to coordinate system i+1.
+    :param m: Index of the coordinate system we would like to accumulate the given homographies towards.
+    :return: H2m − A list of M 3x3 homography matrices, where H2m[i] transforms points from coordinate system i to
+             coordinate system m. homography matrices should always maintain the property that H[2,2]==1, so each
+             matrix is normalized.
+    """
+    H2m = []
+    for i in range(len(H_successive) + 1):
+        work_mat = np.eye(3)
+        if i < m:
+            for j in range(m - 1, i - 1, -1):
+                work_mat = np.dot(work_mat, H_successive[j])
+        elif i > m:
+            for j in range(m, i, 1):
+                work_mat = np.dot(work_mat, np.linalg.inv(H_successive[j]))
+        else:
+            work_mat = np.eye(3)
+        work_mat /= work_mat[2][2]
+        H2m.append(work_mat)
+    return H2m
+
+
+
+
+def render_panorama(ims, Hs):
+    x_val,y_val = [],[]
+    centers_ims = []
+
+    center_dummy = np.array([[int((ims[0].shape[1] - 1 )/ 2), int((ims[0].shape[0]  - 1)/ 2)]])
+    corners = np.array([[0,0],[ims[0].shape[1] - 1,0],[0, ims[0].shape[0] - 1],[ims[0].shape[1] - 1,ims[0].shape[0] - 1]])
+    for i in range(len(ims)):
+        cur_pos = apply_homography(np.copy(corners), Hs[i])
+        x_val += list(cur_pos[:,0])
+        y_val += list(cur_pos[:,1])
+        centers_ims.append(apply_homography(np.copy(center_dummy), Hs[i])[:])
+    x_max,x_min = max(x_val), min(x_val)
+    y_max,y_min = max(y_val), min(y_val)
+
+    xs, ys = np.meshgrid(np.arange(x_min, x_max + 1), np.arange(y_min, y_max + 1))
+    panorama = np.zeros((xs.shape[0],xs.shape[1]))
+
+    M_set = []
+    M_set.append(0)
+    for i in range(len(ims) - 1):
+        M_set.append(int(np.round(((centers_ims[i][0][0] + centers_ims[i + 1][0][0]) / 2) - x_min)))
+    M_set.append(panorama.shape[1])
+
+    border = M_set
+
+    for i in range(len(ims)):
+        cur_grid_x, cur_grid_y = xs[:, border[i]:border[i+1]], ys[:, border[i]:border[i+1]]
+        homographed_points = \
+            np.array(apply_homography(np.dstack([cur_grid_x.flatten(), cur_grid_y.flatten()])[0], np.linalg.inv(Hs[i])))
+        panorama[:, border[i]:border[i+1]] = \
+            map_coordinates(ims[i], [homographed_points[:, 1], homographed_points[:, 0]], order=1, prefilter=False)\
+            .reshape(panorama[:, border[i]:border[i+1]].shape)
+    # panorama = blend(panorama, mapped.reshape(panorama[:,left:right].shape) , left, right)
+    return panorama
 
 
 
@@ -217,14 +321,7 @@ def render_panorama(ims,H):
 
 
 
-    return None
-
-
-
-
-
-
-# Img_1 = util.read_image("external/oxford1.jpg", 1)
+        # Img_1 = util.read_image("external/oxford1.jpg", 1)
 # Img_2 = util.read_image("external/oxford2.jpg", 1)
 #
 # Img_1_descriptor = find_features(util.build_gaussian_pyramid(Img_1, 3, 3)[0])  # TODO filter_size?
