@@ -31,7 +31,7 @@ def generate_panorama(data_dir, file_prefix, num_images, figsize=(20,20)):
     H12, inliers = sol4.ransac_homography(points1, points2, 10000, 6)
 
     # Display inlier and outlier matches.
-    sol4.display_matches(ims[i], ims[i+1], points1 , points2, inliers=inliers)
+    #sol4.display_matches(ims[i], ims[i+1], points1 , points2, inliers=inliers)
     Hs.append(H12)
 
   # Compute composite homographies from the panorama coordinate system.
@@ -52,9 +52,9 @@ def generate_panorama(data_dir, file_prefix, num_images, figsize=(20,20)):
 def main():
   import timeit
   tic = timeit.default_timer()
-  #generate_panorama('external/', 'office', 4)
+  generate_panorama('external/', 'office', 4)
   #generate_panorama('external/', 'backyard', 3, (20, 10))
-  generate_panorama('external/', 'oxford', 2)
+  #generate_panorama('external/', 'oxford', 2)
   toc = timeit.default_timer()
   print(str(toc - tic) + " seconds")
   plt.show()

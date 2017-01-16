@@ -3,8 +3,8 @@ import sol4_add as add
 import numpy as np
 from scipy.ndimage import map_coordinates
 import matplotlib.pyplot as plt
+import math
 #TODO delete
-import sol4_od
 from functools import reduce
 from scipy.ndimage.filters import convolve as convolve
 
@@ -280,6 +280,7 @@ def accumulate_homographies1(H_successive, m):
 def render_panorama(ims, Hs):
     x_val,y_val = [],[]
     centers_ims = []
+    mask_values = []
 
     center_dummy = np.array([[int((ims[0].shape[1] - 1 )/ 2), int((ims[0].shape[0]  - 1)/ 2)]])
     corners = np.array([[0,0],[ims[0].shape[1] - 1,0],[0, ims[0].shape[0] - 1],[ims[0].shape[1] - 1,ims[0].shape[0] - 1]])
@@ -288,40 +289,83 @@ def render_panorama(ims, Hs):
         x_val += list(cur_pos[:,0])
         y_val += list(cur_pos[:,1])
         centers_ims.append(apply_homography(np.copy(center_dummy), Hs[i])[:])
-    x_max,x_min = max(x_val), min(x_val)
-    y_max,y_min = max(y_val), min(y_val)
+        mask_values.append(i%2)
+    x_max,x_min = int(max(x_val)), int(min(x_val))
+    y_max,y_min = int(max(y_val)), int(min(y_val))
 
-    xs, ys = np.meshgrid(np.arange(x_min, x_max + 1), np.arange(y_min, y_max + 1))
-    panorama = np.zeros((xs.shape[0],xs.shape[1]))
+    pad_x_max = 2**(math.ceil(math.log((x_max + 1 - x_min), 2))) - (x_max + 1 - x_min)
+    pad_y_max = 2**(math.ceil(math.log((y_max + 1 - x_min), 2))) - (y_max + 1 - y_min)
+    xs, ys = np.meshgrid(np.arange(x_min, x_max + 1 + pad_x_max), np.arange(y_min, y_max + 1 + pad_y_max))
+
+    panorama_left = np.zeros((xs.shape[0],xs.shape[1]))
+    panorama_right = np.zeros((xs.shape[0],xs.shape[1]))
+    pans = [panorama_left,panorama_right ]
 
     M_set = []
     M_set.append(0)
     for i in range(len(ims) - 1):
         M_set.append(int(np.round(((centers_ims[i][0][0] + centers_ims[i + 1][0][0]) / 2) - x_min)))
-    M_set.append(panorama.shape[1])
-
+    M_set.append(panorama_left.shape[1])
+    #TODO switch
     border = M_set
-
+    mask = np.zeros((xs.shape[0], xs.shape[1]))
     for i in range(len(ims)):
-        cur_grid_x, cur_grid_y = xs[:, border[i]:border[i+1]], ys[:, border[i]:border[i+1]]
-        homographed_points = \
-            np.array(apply_homography(np.dstack([cur_grid_x.flatten(), cur_grid_y.flatten()])[0], np.linalg.inv(Hs[i])))
-        panorama[:, border[i]:border[i+1]] = \
-            map_coordinates(ims[i], [homographed_points[:, 1], homographed_points[:, 0]], order=1, prefilter=False)\
-            .reshape(panorama[:, border[i]:border[i+1]].shape)
+        if(i == 0):
+
+            cur_grid_x, cur_grid_y = xs[:, border[i]:border[i + 1] + 15], ys[:, border[i]:border[i + 1] + 15]
+            homographed_points = \
+                np.array(
+                    apply_homography(np.dstack([cur_grid_x.flatten(), cur_grid_y.flatten()])[0], np.linalg.inv(Hs[i])))
+
+            pans[0][:, border[i]:border[i + 1] + 15] = \
+                map_coordinates(ims[i], [homographed_points[:, 1], homographed_points[:, 0]], order=1, prefilter=False) \
+                    .reshape(pans[0][:, border[i]:border[i + 1] + 15].shape)
+            mask[:,:border[i+1]] = mask_values[i]
+        elif(i == len(ims) - 1):
+            cur_grid_x, cur_grid_y = xs[:, border[i] - 15:border[i + 1]], ys[:, border[i] - 15:border[i + 1]]
+
+            homographed_points = \
+                np.array(
+                    apply_homography(np.dstack([cur_grid_x.flatten(), cur_grid_y.flatten()])[0], np.linalg.inv(Hs[i])))
+
+            pans[i%2][:, border[i] - 15:border[i + 1]] = \
+                map_coordinates(ims[i], [homographed_points[:, 1], homographed_points[:, 0]], order=1, prefilter=False) \
+                    .reshape(pans[1][:, border[i] - 15:border[i + 1]].shape)
+            mask[:,border[i]:] = mask_values[i]
+
+        else:
+            cur_grid_x, cur_grid_y = xs[:, border[i] - 15:border[i + 1] + 15], ys[:, border[i] - 15:border[i + 1] + 15]
+            homographed_points = \
+                np.array(
+                    apply_homography(np.dstack([cur_grid_x.flatten(), cur_grid_y.flatten()])[0], np.linalg.inv(Hs[i])))
+
+            pans[i%2][:, border[i]-15:border[i + 1] + 15] = \
+                map_coordinates(ims[i], [homographed_points[:, 1], homographed_points[:, 0]], order=1, prefilter=False) \
+                    .reshape(pans[i%2][:, border[i] - 15:border[i + 1] + 15].shape)
+            mask[:,border[i]:border[i+1]] = mask_values[i]
+
+    panorama = util.pyramid_blending(pans[1], pans[0], mask, 3, 9, 9)
+
+
     # panorama = blend(panorama, mapped.reshape(panorama[:,left:right].shape) , left, right)
-    return panorama
+    return panorama[:y_max+1 - y_min,:x_max+1 - x_min]
 
 
 
 
 
+# pan_right = np.copy(panorama)
+# pan_right[:, border[i]:border[i + 1]] = \
+# map_coordinates(ims[i], [homographed_points[:, 1], homographed_points[:, 0]], order=1, prefilter=False) \
+#     .reshape(pan_right[:, border[i]:border[i + 1]].shape)
+# mask = np.zeros(panorama.shape)
+# mask[:,:border[i]] = 1
+# panorama = util.pyramid_blending(panorama,pan_right,mask,3,9,9)
 
 
 
 
-
-        # Img_1 = util.read_image("external/oxford1.jpg", 1)
+    # Img_1 = util.read_image("external/oxford1.jpg", 1)
 # Img_2 = util.read_image("external/oxford2.jpg", 1)
 #
 # Img_1_descriptor = find_features(util.build_gaussian_pyramid(Img_1, 3, 3)[0])  # TODO filter_size?
