@@ -150,7 +150,7 @@ def restore_image(corrupted_image, base_model, num_channels):
 
     #restoring the image
     corrupted_image_new_model[0, :, :] =  corrupted_image_new_model[0, :, :] - 0.5  # todo - do we need that?
-    corrupted_image_new_model = pic_model.predict(corrupted_image_new_model[np.newaxis ,...])[0]
+    corrupted_image_new_model = pic_model.predict(corrupted_image_new_model[np.newaxis,...])[0]
     temp_pic = corrupted_image_new_model[0, :, :] + 0.5
 
     #cliping
@@ -190,9 +190,9 @@ def learn_denoising_model(quick_mode=False):
 
     if(quick_mode == True):
         batch_size = 10;
-        samples_per_epoch = 30;
-        num_epochs = 2;
-        num_valid_samples = 30;
+        samples_per_epoch = 70;
+        num_epochs = 6;
+        num_valid_samples = 70;
 
     #building the model
     denoising_model = build_nn_model(height,width,num_channels)
@@ -265,45 +265,51 @@ def learn_deblurring_model(quick_mode=False):
 #################################  test ######################################
 
 
-#filenames = [f for f in listdir('/cs/usr/rotembh/ex5/text_dataset/train') if isfile(join('/cs/usr/rotembh/ex5/text_dataset/train', f))]
-# im1 = read_image('/cs/usr/rotembh/ex5/text_dataset/train/'+filenames[20],1);
-# im2 = random_motion_blur(im1, [7])
-# model = build_nn_model(16, 16, 32)
-# model.load_weights('debloring_model.h5')
-# re_im = restore_image(im2,model,32);
-# fig = plt.figure("pictures:");
-# sub = fig.add_subplot(221,title='im')
-# plt.imshow(im1,cmap=plt.cm.gray)
-# sub = fig.add_subplot(222, title='im2')
-# plt.imshow(im2,cmap=plt.cm.gray)
-# sub = fig.add_subplot(223, title='re_im')
-# plt.imshow(re_im,cmap=plt.cm.gray)
-# plt.show()
+if __name__ == "__main__":
 
 
 
-# filenames2 = [f for f in listdir('/cs/usr/rotembh/ex5/image_dataset/train') if isfile(join('/cs/usr/rotembh/ex5/image_dataset/train', f))]
-# im11 = read_image('/cs/usr/rotembh/ex5/image_dataset/train/'+filenames2[5],1);
-# im2 = add_gaussian_noise(im11, 0, 0.2)
-# model = build_nn_model(24, 24, 48)
-# model.load_weights('denois_model.h5')
-# re_im = restore_image(im2,model,48);
-# fig = plt.figure("pictures:");
-# sub = fig.add_subplot(221,title='im')
-# plt.imshow(im11,cmap=plt.cm.gray)
-# sub = fig.add_subplot(222, title='im2')
-# plt.imshow(im2,cmap=plt.cm.gray)
-# sub = fig.add_subplot(223, title='re_im')
-# plt.imshow(re_im,cmap=plt.cm.gray)
-# plt.show()
-# corruption_func = lambda x: x
-# crop_size = (16, 16)
-# image_sets = [sol5_utils.images_for_denoising(), sol5_utils.images_for_deblurring()]
-# train_set = load_dataset(image_sets[0], 100, corruption_func, crop_size);
-#
-# source, target =next(train_set)
-# print(source.dtype)
-# source, target =next(train_set)
-# print(source.dtype)
-# source, target =next(train_set)
-# print(source.dtype)
+    im_path = sol5_utils.images_for_denoising()[25]
+
+    #TODO model gaus section ######################################################
+    # model, channels = learn_denoising_model()
+    #
+    # model.save_weights('/cs/usr/arturp/PycharmProjects/ex5/weights.h5')
+    # TODO model gaus section ######################################################
+
+
+
+    # TODO model blur section ######################################################
+
+    # model, channels = learn_deblurring_model()
+    #
+    # model.save_weights('/cs/usr/arturp/PycharmProjects/ex5/weights2.h5')
+
+    # TODO model blur section ######################################################
+
+
+    #model = build_nn_model(24, 24, 48)
+
+    model = learn_denoising_model(True)[0]
+
+
+    im = read_image(im_path, 1)
+
+    cor_im = add_gaussian_noise(read_image(im_path,1),0,0.2)
+
+    res_im = restore_image(cor_im, model, 48)
+
+    ax1 = plt.subplot(221)
+    ax1.set_title("cor_im")
+    plt.imshow(cor_im, cmap='gray')
+
+    ax2 = plt.subplot(222)
+    ax2.set_title("restored Image")
+    plt.imshow(res_im, cmap='gray')
+
+    ax3 = plt.subplot(223)
+    ax3.set_title("original")
+    plt.imshow(im, cmap='gray')
+
+
+    plt.show()
