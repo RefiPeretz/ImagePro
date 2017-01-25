@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.misc import imread as imread, imsave as imsave
+from scipy import misc, signal, ndimage
 from skimage.color import rgb2gray
 import random
 import sol5_utils as util
@@ -13,6 +14,9 @@ DENOISING_HEIGHT, DENOISING_WIDTH = 24,24
 DENOISING_NUM_CHANNEL = 48
 GAUS_NOISE_MIN = 0
 GAUS_NOISE_MAX = 0.2
+DEBLURING_HEIGHT, DEBLURING_WIDTH = 16, 16
+DEBLURING_NUM_CHANNEL = 32
+LIST_MOTION_BLUR = [7]
 
 def normlized_image(image):
     """
@@ -178,39 +182,68 @@ def learn_denoising_model(quick_mode=False):
     return denoising_model, DENOISING_NUM_CHANNEL
 
 
+def add_motion_blur(image, kernel_size, angle):
+    return ndimage.filters.convolve(image, util.motion_blur_kernel(kernel_size, angle))
+
+
+def random_motion_blur(image, list_of_kernel_sizes):
+    rand_angle = random.uniform(0,np.pi)
+    rand_int = random.randint(0, len(list_of_kernel_sizes) - 1)
+    kernel = list_of_kernel_sizes[rand_int]
+    return add_motion_blur(image, kernel, rand_angle)
+
+
+def learn_deblurring_model(quick_mode=False):
+
+    lam_cor = lambda im: random_motion_blur(im, LIST_MOTION_BLUR)
+    ims = util.images_for_deblurring()
+    debluring_model = build_nn_model(DEBLURING_HEIGHT, DEBLURING_WIDTH, DEBLURING_NUM_CHANNEL)
+    train_model(debluring_model, ims, lam_cor, 10, 200, 10, 200) if quick_mode else \
+        train_model(debluring_model, ims, lam_cor, 100, 10000, 10, 1000)
+
+    return debluring_model, DEBLURING_NUM_CHANNEL
 
 if __name__ == "__main__":
 
 
-    im_path = util.images_for_denoising()[25]
-
-    #TODO model gaus section ######################################################
-    # model, channels = learn_denoising_model()
+    # im_path = util.images_for_denoising()[25]
     #
-    # model.save_weights('/cs/usr/arturp/PycharmProjects/ex5/weights.h5')
-    # TODO model gaus section ######################################################
-
-
-
-    # TODO model blur section ######################################################
-
-    # model, channels = learn_deblurring_model()
     #
-    # model.save_weights('/cs/usr/arturp/PycharmProjects/ex5/weights2.h5')
+    # model = learn_denoising_model(True)[0]
+    #
+    #
+    # im = read_image(im_path, 1)
+    #
+    # cor_im = add_gaussian_noise(read_image(im_path,1),0,0.2)
+    #
+    # res_im = restore_image(cor_im, model, 48)
+    #
+    # ax1 = plt.subplot(221)
+    # ax1.set_title("cor_im")
+    # plt.imshow(cor_im, cmap='gray')
+    #
+    # ax2 = plt.subplot(222)
+    # ax2.set_title("restored Image")
+    # plt.imshow(res_im, cmap='gray')
+    #
+    # ax3 = plt.subplot(223)
+    # ax3.set_title("original")
+    # plt.imshow(im, cmap='gray')
+    #
+    #
+    # plt.show()
 
-    # TODO model blur section ######################################################
+    im_path = util.images_for_deblurring()[22]
 
 
-    #model = build_nn_model(24, 24, 48)
-
-    model = learn_denoising_model(True)[0]
+    model = learn_deblurring_model(False)[0]
 
 
     im = read_image(im_path, 1)
 
-    cor_im = add_gaussian_noise(read_image(im_path,1),0,0.2)
+    cor_im = random_motion_blur(read_image(im_path,1), [7])
 
-    res_im = restore_image(cor_im, model, 48)
+    res_im = restore_image(cor_im, model, 32)
 
     ax1 = plt.subplot(221)
     ax1.set_title("cor_im")
