@@ -1,0 +1,17 @@
+Question 1: Suggest how to use the workflow you have implemented in this assignment to train a network that
+could be used for super-resolution
+First we will need to implement some lower resolution function.
+We use this function for the trainning and testing model.
+The procees of this function: choose randomly a scale of the image we wish to down-sample to.
+We do this with the same methods we used in the excersise, the gaussain kernel.
+After the down scale the function will expand the image to the original size, we will return
+the image with some resolution loss. Now we can use this function in order to train the desnosing model
+which will return a trained super-resolution model and channels we used for the construction.
+
+We give 24x24 patches to the  trainning function and we will use 48 channels for all
+the layrs, all of them but the last one.
+Using the corruption function we descripbed we will use the same variables as
+in the excersize.
+Using both, we will restore the courrupted image using the function restore_image
+the trained model and the channels number and output super resolution image.
+

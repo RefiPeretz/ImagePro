@@ -1,4 +1,0 @@
-While I examined my code I notice that there is a difference between the images but really small one.
-The difference lies in the fact that in the spatial space we are conv with the original image.
-While int the fourier space we pad our gaussain with zeroes.
-

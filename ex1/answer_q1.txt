@@ -1,8 +1,0 @@
-If we get a segment with out pixcels it means that
-for a given border z_i to z_i+1 when z represent index of pixcel from [0,255]
-the sum of all the pixcel with value p > z_i and p <=  z_i+1 is 0 since there are no
-pixcels over there. 
-The new Q calculate for every iteration when in the formula we divide by the sum of 
-pixcel we just discribed thus we can encounter in a division by zero.
-Thats why every segement have to contains some pixcels 
-
